@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { EditorProvider } from '@/contexts/EditorContext';
 import { useRealtimeNotes } from '@/hooks/useRealtimeNotes';
 import Layout from '@/components/Layout';
+import CommandPaletteProvider from '@/components/CommandPaletteProvider';
 import '@/styles/globals.css';
 
 const queryClient = new QueryClient({
@@ -31,9 +32,11 @@ export default function App({ Component, pageProps }: AppProps) {
         <AuthProvider>
           <EditorProvider>
             <RealtimeSubscription />
-            <Layout>
-              <Component {...pageProps} />
-            </Layout>
+            <CommandPaletteProvider>
+              <Layout>
+                <Component {...pageProps} />
+              </Layout>
+            </CommandPaletteProvider>
           </EditorProvider>
         </AuthProvider>
       </SupabaseProvider>
