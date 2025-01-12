@@ -1,44 +1,42 @@
-/** @type {import('tailwindcss').Config} */
-import {
-  colors,
-  typography,
-  spacing,
-  shadows,
-  radii,
-} from './src/theme/tokens.ts';
+import { colors, typography, spacing } from './src/theme/tokens';
 import typographyPlugin from '@tailwindcss/typography';
 import formsPlugin from '@tailwindcss/forms';
+import animatePlugin from 'tailwindcss-animate';
 
-const config = {
-  content: [
-    './src/pages/**/*.{js,ts,jsx,tsx}',
-    './src/components/**/*.{js,ts,jsx,tsx}',
-  ],
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: ['./src/**/*.{js,ts,jsx,tsx}'],
+  darkMode: 'class',
   theme: {
-    colors,
-    fontFamily: typography.fonts,
-    fontSize: typography.sizes,
-    fontWeight: typography.weights,
-    spacing,
-    boxShadow: shadows,
-    borderRadius: radii,
     extend: {
-      typography: {
-        DEFAULT: {
-          css: {
-            maxWidth: 'none',
-            color: 'inherit',
-            a: {
-              color: colors.primary[600],
-              '&:hover': {
-                color: colors.primary[700],
-              },
-            },
-          },
+      colors,
+      fontFamily: typography.fonts,
+      fontSize: typography.sizes,
+      lineHeight: typography.lineHeight,
+      spacing,
+      transitionDuration: {
+        fast: '150ms',
+        medium: '300ms',
+        slow: '500ms',
+      },
+      transitionTimingFunction: {
+        'ease-custom': 'cubic-bezier(0.4, 0, 0.2, 1)',
+      },
+      animation: {
+        'fade-in': 'fadeIn 0.4s ease-out',
+        'slide-in': 'slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+      },
+      keyframes: {
+        fadeIn: {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+        slideIn: {
+          '0%': { transform: 'translateY(10px)', opacity: '0' },
+          '100%': { transform: 'translateY(0)', opacity: '1' },
         },
       },
     },
   },
-  plugins: [typographyPlugin, formsPlugin],
+  plugins: [typographyPlugin, formsPlugin, animatePlugin],
 };
-export default config;

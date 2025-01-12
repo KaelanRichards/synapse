@@ -7,11 +7,13 @@ export interface Note {
   updated_at: string;
 }
 
+export type ConnectionType = 'related' | 'prerequisite' | 'refines';
+
 export interface Connection {
   id: string;
   note_from: string;
   note_to: string;
-  connection_type: 'related' | 'prerequisite' | 'refines';
+  connection_type: ConnectionType;
   strength: number;
   bidirectional: boolean;
   context: string | null;
@@ -56,4 +58,4 @@ export interface Database {
       [_ in never]: never;
     };
   };
-} 
+}

@@ -1,64 +1,78 @@
 export const colors = {
-  primary: {
-    50: '#eef2ff',
-    100: '#e0e7ff',
-    200: '#c7d2fe',
-    300: '#a5b4fc',
-    400: '#818cf8',
-    500: '#6366f1',
-    600: '#4f46e5',
-    700: '#4338ca',
-    800: '#3730a3',
-    900: '#312e81',
+  accent: {
+    50: 'rgba(248, 246, 241, 1)',
+    100: 'rgba(241, 237, 227, 1)',
+    200: 'rgba(226, 219, 201, 1)',
+    300: 'rgba(211, 201, 175, 1)',
+    400: 'rgba(196, 183, 149, 1)',
+    500: 'rgba(181, 165, 123, 1)',
+    600: 'rgba(166, 147, 97, 1)',
+    700: 'rgba(151, 129, 71, 1)',
+    800: 'rgba(136, 111, 45, 1)',
+    900: 'rgba(121, 93, 19, 1)',
   },
-  neutral: {
-    50: '#fafafa',
-    100: '#f4f4f5',
-    200: '#e4e4e7',
-    300: '#d4d4d8',
-    400: '#a1a1aa',
-    500: '#71717a',
-    600: '#52525b',
-    700: '#3f3f46',
-    800: '#27272a',
-    900: '#18181b',
+  paper: {
+    light: '#FFFFFF',
+    dark: '#1A1A1A',
   },
-  success: {
-    50: '#f0fdf4',
-    500: '#22c55e',
-    700: '#15803d',
+  text: {
+    light: '#1A1A1A',
+    dark: '#FFFFFF',
   },
   error: {
-    50: '#fef2f2',
-    500: '#ef4444',
-    700: '#b91c1c',
+    50: '#FEF2F2',
+    100: '#FEE2E2',
+    200: '#FECACA',
+    300: '#FCA5A5',
+    400: '#F87171',
+    500: '#EF4444',
+    600: '#DC2626',
+    700: '#B91C1C',
   },
-  warning: {
-    50: '#fffbeb',
-    500: '#f59e0b',
-    700: '#b45309',
+} as const;
+
+export const maturityStateColors = {
+  SEED: {
+    bg: 'rgba(167, 201, 167, 0.15)',
+    border: 'rgba(167, 201, 167, 0.3)',
   },
-};
+  SAPLING: {
+    bg: 'rgba(179, 157, 219, 0.15)',
+    border: 'rgba(179, 157, 219, 0.3)',
+  },
+  GROWTH: {
+    bg: 'rgba(144, 202, 249, 0.15)',
+    border: 'rgba(144, 202, 249, 0.3)',
+  },
+  MATURE: {
+    bg: 'rgba(255, 183, 77, 0.15)',
+    border: 'rgba(255, 183, 77, 0.3)',
+  },
+  EVOLVING: {
+    bg: 'rgba(229, 115, 115, 0.15)',
+    border: 'rgba(229, 115, 115, 0.3)',
+  },
+} as const;
+
+export const connectionColors = {
+  related: { color: '#B9B0A2', animated: false },
+  prerequisite: { color: '#8B7C66', animated: true },
+  refines: { color: '#6F6352', animated: true },
+} as const;
 
 export const spacing = {
-  0: '0',
-  1: '0.25rem',
-  2: '0.5rem',
-  3: '0.75rem',
-  4: '1rem',
-  5: '1.25rem',
-  6: '1.5rem',
-  8: '2rem',
-  10: '2.5rem',
-  12: '3rem',
-  16: '4rem',
-  20: '5rem',
-};
+  xs: '0.25rem',
+  sm: '0.5rem',
+  md: '1rem',
+  lg: '1.5rem',
+  xl: '2rem',
+  '2xl': '3rem',
+} as const;
 
 export const typography = {
   fonts: {
     sans: 'Inter, system-ui, -apple-system, sans-serif',
-    mono: 'JetBrains Mono, monospace',
+    serif: 'Bookerly, Georgia, serif',
   },
   sizes: {
     xs: '0.75rem',
@@ -67,31 +81,26 @@ export const typography = {
     lg: '1.125rem',
     xl: '1.25rem',
     '2xl': '1.5rem',
-    '3xl': '1.875rem',
-    '4xl': '2.25rem',
   },
-  weights: {
-    normal: '400',
-    medium: '500',
-    semibold: '600',
-    bold: '700',
+  lineHeight: {
+    none: '1',
+    tight: '1.25',
+    snug: '1.375',
+    normal: '1.5',
+    relaxed: '1.625',
+    loose: '2',
+    prose: '1.8',
   },
-};
+} as const;
 
-export const shadows = {
-  sm: '0 1px 2px 0 rgb(0 0 0 / 0.05)',
-  DEFAULT: '0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)',
-  md: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
-  lg: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)',
-};
-
-export const radii = {
-  none: '0',
-  sm: '0.125rem',
-  DEFAULT: '0.25rem',
-  md: '0.375rem',
-  lg: '0.5rem',
-  xl: '0.75rem',
-  '2xl': '1rem',
-  full: '9999px',
-};
+export const transitions = {
+  duration: {
+    fast: '150ms',
+    medium: '300ms',
+    slow: '500ms',
+  },
+  timing: {
+    ease: 'cubic-bezier(0.4, 0, 0.2, 1)',
+    linear: 'linear',
+  },
+} as const;

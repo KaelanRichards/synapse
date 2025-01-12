@@ -2,34 +2,183 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  @apply text-neutral-900 antialiased;
-}
-
 @layer base {
+  :root {
+    --background: theme('colors.paper.light');
+    --foreground: theme('colors.text.light');
+    --reading-width: 65ch;
+    --side-margin: max(2rem, calc((100vw - var(--reading-width)) / 2));
+  }
+
+  [data-theme='dark'] {
+    --background: theme('colors.paper.dark');
+    --foreground: theme('colors.text.dark');
+  }
+
+  html {
+    @apply h-full antialiased;
+    font-size: clamp(16px, 2vw, 18px);
+  }
+
   body {
-    @apply text-neutral-900 antialiased;
+    @apply h-full bg-[var(--background)] text-[var(--foreground)] font-serif;
+    font-feature-settings:
+      'liga' 1,
+      'kern' 1;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
 
 @layer components {
-  .prose {
-    @apply max-w-none;
+  .note-content {
+    @apply mx-auto px-8 py-12 md:py-16;
+    max-width: var(--reading-width);
+    margin-left: var(--side-margin);
+    margin-right: var(--side-margin);
   }
 
-  .prose p {
-    @apply mb-4;
+  .note-content p {
+    @apply mb-6 leading-relaxed text-base;
   }
 
-  .prose h1 {
-    @apply text-2xl font-bold mb-4;
+  .note-content h1 {
+    @apply text-2xl font-semibold mb-8 leading-relaxed tracking-tight;
   }
 
-  .prose h2 {
-    @apply text-xl font-bold mb-3;
+  .note-content h2 {
+    @apply text-xl font-semibold mb-6 leading-relaxed;
   }
 
-  .prose h3 {
-    @apply text-lg font-bold mb-2;
+  .note-content h3 {
+    @apply text-lg font-semibold mb-4 leading-relaxed;
   }
+
+  .side-panel {
+    @apply fixed top-0 left-0 h-full bg-[var(--background)] shadow-md transform -translate-x-full transition-transform;
+    width: min(80vw, 20rem);
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .side-panel.open {
+    @apply translate-x-0;
+  }
+
+  .connection-point {
+    @apply relative inline;
+    text-decoration-thickness: 1px;
+    text-decoration-color: theme('colors.accent.300');
+    text-underline-offset: 2px;
+  }
+
+  .connection-point::after {
+    content: '';
+    @apply absolute -bottom-0.5 left-0 right-0 h-px bg-accent-300 opacity-0;
+    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .connection-point:hover::after {
+    @apply opacity-30;
+  }
+
+  .note-state {
+    @apply transition-colors duration-[400ms];
+  }
+
+  .note-state-seed {
+    @apply bg-state-seed;
+  }
+
+  .note-state-sapling {
+    @apply bg-state-sapling;
+  }
+
+  .note-state-growth {
+    @apply bg-state-growth;
+  }
+
+  .note-state-mature {
+    @apply bg-state-mature;
+  }
+
+  .note-state-evolving {
+    @apply bg-state-evolving;
+  }
+
+  .graph-background {
+    @apply fixed inset-0 opacity-5 pointer-events-none;
+    transition:
+      opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+      transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .graph-background.focused {
+    @apply opacity-90 pointer-events-auto;
+    backdrop-filter: blur(2px);
+  }
+
+  .search-bar {
+    @apply w-full max-w-2xl mx-auto px-6 py-3 bg-[var(--background)] border border-accent-200 rounded-lg;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .search-bar:focus-within {
+    @apply border-accent-300;
+    box-shadow: 0 0 0 2px theme('colors.accent.100');
+  }
+
+  .breadcrumb {
+    @apply flex items-center space-x-2 text-sm text-accent-500 py-4;
+    padding-left: var(--side-margin);
+  }
+
+  .breadcrumb-separator {
+    @apply text-accent-300;
+  }
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(-10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes pageTransition {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-enter {
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+.slide-enter {
+  animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.page-enter {
+  animation: pageTransition 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
