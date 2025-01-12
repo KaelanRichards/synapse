@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { createBrowserSupabaseClient } from "@supabase/auth-helpers-nextjs";
 import { SessionContextProvider } from "@supabase/auth-helpers-react";
-import { Database } from "@/types/supabase";
+import { supabase } from "@/lib/supabase/client";
 import "./globals.css";
 
 export default function RootLayout({
@@ -11,8 +10,6 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [supabase] = useState(() => createBrowserSupabaseClient<Database>());
-
   return (
     <html lang="en">
       <body>

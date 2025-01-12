@@ -1,10 +1,21 @@
 import { createClient } from "@supabase/supabase-js";
 import { Database } from "@/types/supabase";
-import { getEnvVar } from "../env";
+
+// Ensure environment variables are available
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  if (process.env.NODE_ENV === "development") {
+    console.warn(
+      "Supabase URL and Anon Key are required. Please check your .env file."
+    );
+  }
+}
 
 export const supabase = createClient<Database>(
-  getEnvVar("NEXT_PUBLIC_SUPABASE_URL"),
-  getEnvVar("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
+  supabaseUrl || "",
+  supabaseAnonKey || "",
   {
     auth: {
       persistSession: true,
@@ -14,14 +25,17 @@ export const supabase = createClient<Database>(
 );
 
 export const getServiceSupabase = () => {
-  return createClient<Database>(
-    getEnvVar("NEXT_PUBLIC_SUPABASE_URL"),
-    getEnvVar("SUPABASE_SERVICE_ROLE_KEY"),
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    }
-  );
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceRoleKey) {
+    throw new Error(
+      "SUPABASE_SERVICE_ROLE_KEY is required for admin operations"
+    );
+  }
+
+  return createClient<Database>(supabaseUrl || "", serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
 };
