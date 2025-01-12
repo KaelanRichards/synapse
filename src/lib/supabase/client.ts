@@ -53,25 +53,12 @@ export const createBrowserClient = () => {
       auth: {
         autoRefreshToken: true,
         persistSession: true,
-        storageKey: "app-session",
-        storage: {
-          getItem: (key) => {
-            if (typeof window !== "undefined") {
-              return localStorage.getItem(key);
-            }
-            return null;
-          },
-          setItem: (key, value) => {
-            if (typeof window !== "undefined") {
-              localStorage.setItem(key, value);
-            }
-          },
-          removeItem: (key) => {
-            if (typeof window !== "undefined") {
-              localStorage.removeItem(key);
-            }
-          },
-        },
+        detectSessionInUrl: true,
+        flowType: "pkce",
+        storage:
+          typeof window !== "undefined" ? window.localStorage : undefined,
+        storageKey: "supabase.auth.token",
+        debug: process.env.NODE_ENV === "development",
       },
       db: {
         schema: "public",
