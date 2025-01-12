@@ -133,7 +133,8 @@ describe("useNotes", () => {
       expect.objectContaining({
         title: "New Note",
         content: "New Content",
-        maturityState: "SEED",
+        maturity_state: "SEED",
+        user_id: "test-user-id",
       }),
     ]);
   });
