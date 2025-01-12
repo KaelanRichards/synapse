@@ -1,34 +1,14 @@
 import { createClient } from "@supabase/supabase-js";
 import { Database } from "@/types/supabase";
 
-if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
-  throw new Error(
-    "NEXT_PUBLIC_SUPABASE_URL is required. Please check your environment variables."
-  );
-}
-
-if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-  throw new Error(
-    "NEXT_PUBLIC_SUPABASE_ANON_KEY is required. Please check your environment variables."
-  );
-}
-
-// After the checks above, we can safely assert these are defined
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string;
-
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-  },
-});
-
+// This client should only be used in server-side operations
 export const getServiceSupabase = () => {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!serviceRoleKey) {
+
+  if (!supabaseUrl || !serviceRoleKey) {
     throw new Error(
-      "SUPABASE_SERVICE_ROLE_KEY is required for admin operations"
+      "NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required for admin operations"
     );
   }
 
