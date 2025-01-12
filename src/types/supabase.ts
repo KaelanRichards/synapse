@@ -17,6 +17,7 @@ export interface Database {
           maturity_state: "SEED" | "SAPLING" | "GROWTH" | "MATURE" | "EVOLVING";
           created_at: string;
           updated_at: string;
+          user_id: string;
         };
         Insert: {
           id?: string;
@@ -30,6 +31,7 @@ export interface Database {
             | "EVOLVING";
           created_at?: string;
           updated_at?: string;
+          user_id: string;
         };
         Update: {
           id?: string;
@@ -43,6 +45,7 @@ export interface Database {
             | "EVOLVING";
           created_at?: string;
           updated_at?: string;
+          user_id?: string;
         };
       };
       connections: {
@@ -53,9 +56,10 @@ export interface Database {
           connection_type: "related" | "prerequisite" | "refines";
           strength: number;
           bidirectional: boolean;
-          context?: string;
+          context: string | null;
           emergent: boolean;
           created_at: string;
+          user_id: string;
         };
         Insert: {
           id?: string;
@@ -64,9 +68,10 @@ export interface Database {
           connection_type: "related" | "prerequisite" | "refines";
           strength?: number;
           bidirectional?: boolean;
-          context?: string;
+          context?: string | null;
           emergent?: boolean;
           created_at?: string;
+          user_id: string;
         };
         Update: {
           id?: string;
@@ -75,32 +80,36 @@ export interface Database {
           connection_type?: "related" | "prerequisite" | "refines";
           strength?: number;
           bidirectional?: boolean;
-          context?: string;
+          context?: string | null;
           emergent?: boolean;
           created_at?: string;
+          user_id?: string;
         };
       };
       note_versions: {
         Row: {
           id: string;
           note_id: string;
-          content: string;
           version_number: number;
+          content: string;
           created_at: string;
+          user_id: string;
         };
         Insert: {
           id?: string;
           note_id: string;
-          content: string;
           version_number: number;
+          content: string;
           created_at?: string;
+          user_id: string;
         };
         Update: {
           id?: string;
           note_id?: string;
-          content?: string;
           version_number?: number;
+          content?: string;
           created_at?: string;
+          user_id?: string;
         };
       };
     };

@@ -2,36 +2,40 @@ export interface Note {
   id: string;
   title: string;
   content: string;
-  maturity_state: "SEED" | "SAPLING" | "GROWTH" | "MATURE" | "EVOLVING";
-  created_at: string;
-  updated_at: string;
-  connections?: Connection[];
-  history?: VersionHistory[];
+  maturityState: "SEED" | "SAPLING" | "GROWTH" | "MATURE" | "EVOLVING";
+  createdAt: string;
+  updatedAt: string;
+  userId: string;
 }
 
 export interface Connection {
   id: string;
-  note_from: string;
-  note_to: string;
-  connection_type: "related" | "prerequisite" | "refines";
+  noteFrom: string;
+  noteTo: string;
+  connectionType: "related" | "prerequisite" | "refines";
   strength: number;
   bidirectional: boolean;
   context?: string;
   emergent: boolean;
-  created_at: string;
+  createdAt: string;
+  userId: string;
 }
 
-export interface VersionHistory {
+export interface NoteVersion {
   id: string;
-  note_id: string;
+  noteId: string;
+  versionNumber: number;
   content: string;
-  version_number: number;
-  created_at: string;
+  createdAt: string;
+  userId: string;
 }
 
 export interface User {
   id: string;
   email: string;
-  created_at: string;
-  last_login: string;
+  fullName?: string;
+  avatarUrl?: string;
 }
+
+export type MaturityState = Note["maturityState"];
+export type ConnectionType = Connection["connectionType"];
