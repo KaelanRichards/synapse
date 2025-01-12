@@ -1,16 +1,24 @@
 "use client";
 
 import { useSupabaseClient } from "@supabase/auth-helpers-react";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useState, useEffect } from "react";
+import Link from "next/link";
 
 export default function SignIn() {
   const supabase = useSupabaseClient();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const msg = searchParams.get("message");
+    if (msg) setMessage(msg);
+  }, [searchParams]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,6 +48,16 @@ export default function SignIn() {
           </h2>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSignIn}>
+          {message && (
+            <div className="rounded-md bg-blue-50 p-4">
+              <div className="text-sm text-blue-700">{message}</div>
+            </div>
+          )}
+          {error && (
+            <div className="rounded-md bg-red-50 p-4">
+              <div className="text-sm text-red-700">{error}</div>
+            </div>
+          )}
           <div className="rounded-md shadow-sm -space-y-px">
             <div>
               <label htmlFor="email-address" className="sr-only">
@@ -75,11 +93,24 @@ export default function SignIn() {
             </div>
           </div>
 
-          {error && (
-            <div className="rounded-md bg-red-50 p-4">
-              <div className="text-sm text-red-700">{error}</div>
+          <div className="flex items-center justify-between">
+            <div className="text-sm">
+              <Link
+                href="/reset-password"
+                className="font-medium text-indigo-600 hover:text-indigo-500"
+              >
+                Forgot your password?
+              </Link>
             </div>
-          )}
+            <div className="text-sm">
+              <Link
+                href="/signup"
+                className="font-medium text-indigo-600 hover:text-indigo-500"
+              >
+                Create an account
+              </Link>
+            </div>
+          </div>
 
           <div>
             <button
