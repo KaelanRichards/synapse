@@ -79,9 +79,18 @@ CREATE POLICY "Users can insert their own note versions" ON public.note_versions
     FOR INSERT
     WITH CHECK (auth.uid() = user_id);
 
+CREATE POLICY "Users can update their own note versions" ON public.note_versions
+    FOR UPDATE
+    USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own note versions" ON public.note_versions
+    FOR DELETE
+    USING (auth.uid() = user_id);
+
 -- Create indexes
 CREATE INDEX IF NOT EXISTS notes_user_id_idx ON public.notes(user_id);
 CREATE INDEX IF NOT EXISTS connections_user_id_idx ON public.connections(user_id);
 CREATE INDEX IF NOT EXISTS note_versions_user_id_idx ON public.note_versions(user_id);
-CREATE INDEX IF NOT EXISTS notes_created_at_idx ON public.notes(created_at DESC);
-CREATE INDEX IF NOT EXISTS connections_created_at_idx ON public.connections(created_at DESC); 
+CREATE INDEX IF NOT EXISTS connections_note_from_idx ON public.connections(note_from);
+CREATE INDEX IF NOT EXISTS connections_note_to_idx ON public.connections(note_to);
+CREATE INDEX IF NOT EXISTS note_versions_note_id_idx ON public.note_versions(note_id); 

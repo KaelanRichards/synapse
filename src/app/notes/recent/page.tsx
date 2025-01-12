@@ -81,15 +81,30 @@ export default function RecentNotesPage() {
                         </p>
                         <div className="mt-2 flex">
                           <div className="flex items-center text-sm text-gray-500">
-                            <span className="truncate">
-                              Created:{" "}
-                              {new Date(note.created_at).toLocaleDateString()}
-                            </span>
-                            <span className="mx-2">•</span>
-                            <span className="truncate">
-                              Updated:{" "}
-                              {new Date(note.updated_at).toLocaleDateString()}
-                            </span>
+                            <div>
+                              <span className="text-sm font-medium text-gray-500">
+                                Created:
+                              </span>
+                              <span className="ml-2 text-sm text-gray-900">
+                                {new Date(note.createdAt).toLocaleDateString()}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-sm font-medium text-gray-500">
+                                Last Updated:
+                              </span>
+                              <span className="ml-2 text-sm text-gray-900">
+                                {new Date(note.updatedAt).toLocaleDateString()}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-sm font-medium text-gray-500">
+                                Maturity:
+                              </span>
+                              <span className="ml-2 text-sm text-gray-900">
+                                {note.maturityState}
+                              </span>
+                            </div>
                           </div>
                         </div>
                       </div>

@@ -1,73 +1,67 @@
 import { createClient } from "@supabase/supabase-js";
-import { Database } from "@/types/supabase";
+import { type Database } from "@/types/supabase";
 
-class SupabaseConfigError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "SupabaseConfigError";
-  }
+if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+  throw new Error("Missing env.NEXT_PUBLIC_SUPABASE_URL");
+}
+if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+  throw new Error("Missing env.NEXT_PUBLIC_SUPABASE_ANON_KEY");
 }
 
-// This client should only be used in server-side operations
-export const getServiceSupabase = () => {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  if (!supabaseUrl || !serviceRoleKey) {
-    throw new SupabaseConfigError(
-      "NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required for admin operations"
-    );
-  }
-
-  try {
-    return createClient<Database>(supabaseUrl, serviceRoleKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
+// Create a single supabase client for interacting with your database
+const createBrowserClient = () => {
+  return createClient<Database>(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+      storageKey: "app-session",
+      flowType: "pkce",
+      storage: {
+        getItem: (key) => {
+          try {
+            if (typeof window === "undefined") return null;
+            const item = window.localStorage.getItem(key);
+            if (!item) return null;
+            // Also store in cookies for better persistence
+            document.cookie = `${key}=${item};path=/;max-age=31536000;SameSite=Lax`;
+            return item;
+          } catch {
+            return null;
+          }
+        },
+        setItem: (key, value) => {
+          try {
+            if (typeof window === "undefined") return;
+            window.localStorage.setItem(key, value);
+            // Also store in cookies for better persistence
+            document.cookie = `${key}=${value};path=/;max-age=31536000;SameSite=Lax`;
+          } catch {
+            // Fail silently
+          }
+        },
+        removeItem: (key) => {
+          try {
+            if (typeof window === "undefined") return;
+            window.localStorage.removeItem(key);
+            // Also remove from cookies
+            document.cookie = `${key}=;path=/;expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+          } catch {
+            // Fail silently
+          }
+        },
       },
-      db: {
-        schema: "public",
-      },
-    });
-  } catch (error) {
-    console.error("Failed to initialize Supabase client:", error);
-    throw new Error(
-      "Failed to initialize Supabase client. Please check your configuration."
-    );
-  }
+    },
+    db: {
+      schema: "public",
+    },
+  });
 };
 
-// Client-side Supabase instance with auto-refresh token
-export const createBrowserClient = () => {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+// Singleton instance
+let browserClient = createBrowserClient();
 
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new SupabaseConfigError(
-      "NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are required for client operations"
-    );
-  }
-
-  try {
-    return createClient<Database>(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        autoRefreshToken: true,
-        persistSession: true,
-        detectSessionInUrl: true,
-        flowType: "pkce",
-        storage:
-          typeof window !== "undefined" ? window.localStorage : undefined,
-        storageKey: "supabase.auth.token",
-        debug: process.env.NODE_ENV === "development",
-      },
-      db: {
-        schema: "public",
-      },
-    });
-  } catch (error) {
-    console.error("Failed to initialize browser Supabase client:", error);
-    throw new Error(
-      "Failed to initialize Supabase client. Please check your configuration."
-    );
-  }
-};
+export const getSupabaseBrowserClient = () => browserClient;

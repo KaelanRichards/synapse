@@ -19,19 +19,40 @@ interface KnowledgeGraphProps {
     id: string;
     title: string;
     content: string;
-    maturity_state: string;
+    maturityState: string;
   }>;
   connections: Array<{
     id: string;
-    note_from: string;
-    note_to: string;
-    connection_type: string;
+    noteFrom: string;
+    noteTo: string;
+    connectionType: string;
     strength: number;
+    bidirectional: boolean;
+    context?: string;
+    emergent: boolean;
   }>;
   onNodeClick?: (noteId: string) => void;
 }
 
-const NODE_TYPES = {
+interface NoteNode {
+  id: string;
+  title: string;
+  content: string;
+  maturityState: string;
+}
+
+interface Connection {
+  id: string;
+  noteFrom: string;
+  noteTo: string;
+  connectionType: string;
+  strength: number;
+  bidirectional: boolean;
+  context?: string;
+  emergent: boolean;
+}
+
+const nodeTypes = {
   note: NoteNode,
 };
 
@@ -45,7 +66,7 @@ function NoteNode({ data }: NodeProps) {
         </div>
         <div className="mt-1">
           <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-            {data.maturity_state}
+            {data.maturityState}
           </span>
         </div>
       </div>
@@ -67,7 +88,8 @@ export default function KnowledgeGraph({
         type: "note",
         data: {
           title: note.title,
-          maturity_state: note.maturity_state,
+          content: note.content,
+          maturityState: note.maturityState,
         },
         position: { x: 0, y: 0 }, // Initial position, will be arranged by layout
       })),
@@ -78,15 +100,14 @@ export default function KnowledgeGraph({
     () =>
       connections.map((conn) => ({
         id: conn.id,
-        source: conn.note_from,
-        target: conn.note_to,
+        source: conn.noteFrom,
+        target: conn.noteTo,
         type: "smoothstep",
-        animated: true,
+        animated: conn.emergent,
         style: {
-          stroke: getConnectionColor(conn.connection_type),
-          strokeWidth: Math.max(1, Math.min(conn.strength, 5)),
+          stroke: getConnectionColor(conn.connectionType),
         },
-        label: conn.connection_type,
+        label: conn.connectionType,
       })),
     [connections]
   );
@@ -135,7 +156,7 @@ export default function KnowledgeGraph({
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
-        nodeTypes={NODE_TYPES}
+        nodeTypes={nodeTypes}
         onNodeClick={handleNodeClick}
         fitView
       >

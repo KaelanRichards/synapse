@@ -1,13 +1,19 @@
-export interface Note {
+export type MaturityState =
+  | "SEED"
+  | "SAPLING"
+  | "GROWTH"
+  | "MATURE"
+  | "EVOLVING";
+
+export type Note = {
   id: string;
   title: string;
   content: string;
-  maturityState: "SEED" | "SAPLING" | "GROWTH" | "MATURE" | "EVOLVING";
+  maturityState: MaturityState;
   createdAt: string;
   updatedAt: string;
   userId: string;
-  connections?: Connection[];
-}
+};
 
 export interface Connection {
   id: string;
@@ -48,5 +54,4 @@ export interface VersionHistory {
   changes: string;
 }
 
-export type MaturityState = Note["maturityState"];
 export type ConnectionType = Connection["connectionType"];

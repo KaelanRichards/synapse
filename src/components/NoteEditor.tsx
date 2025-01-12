@@ -3,45 +3,54 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createNote, updateNote } from "@/lib/supabase";
+import { MaturityState } from "@/types";
 
 interface NoteEditorProps {
   initialData?: {
     id?: string;
     title: string;
     content: string;
-    maturity_state?: "SEED" | "SAPLING" | "GROWTH" | "MATURE" | "EVOLVING";
+    maturityState?: "SEED" | "SAPLING" | "GROWTH" | "MATURE" | "EVOLVING";
   };
   mode: "create" | "edit";
 }
 
+interface NoteFormData {
+  title: string;
+  content: string;
+  maturityState?: MaturityState;
+}
+
 export default function NoteEditor({ initialData, mode }: NoteEditorProps) {
   const router = useRouter();
-  const [title, setTitle] = useState(initialData?.title || "");
-  const [content, setContent] = useState(initialData?.content || "");
-  const [maturityState, setMaturityState] = useState<
-    "SEED" | "SAPLING" | "GROWTH" | "MATURE" | "EVOLVING"
-  >(initialData?.maturity_state || "SEED");
+  const [title, setTitle] = useState(initialData?.title ?? "");
+  const [content, setContent] = useState(initialData?.content ?? "");
+  const [maturityState, setMaturityState] = useState<MaturityState>(
+    initialData?.maturityState ?? "SEED"
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-
     try {
-      if (mode === "create") {
-        const noteId = await createNote(title, content);
-        router.push(`/notes/${noteId}`);
-      } else if (initialData?.id) {
+      if (mode === "edit" && initialData?.id) {
         await updateNote(initialData.id, {
           title,
           content,
-          maturity_state: maturityState,
+          maturityState,
         });
         router.push(`/notes/${initialData.id}`);
+      } else {
+        await createNote({
+          title,
+          content,
+          maturityState,
+        });
+        router.push("/notes");
       }
     } catch (error) {
       console.error("Error saving note:", error);
-      // TODO: Add proper error handling UI
     } finally {
       setIsSubmitting(false);
     }

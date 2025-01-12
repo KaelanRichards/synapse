@@ -1,5 +1,21 @@
 import { createClient } from "@supabase/supabase-js";
 import { Database } from "@/types/supabase";
+import {
+  Note,
+  Connection,
+  NoteVersion,
+  PartialNote,
+  PartialConnection,
+  PartialNoteVersion,
+} from "@/lib/utils/case-mapping";
+import {
+  snakeToCamelNote,
+  camelToSnakeNote,
+  snakeToCamelConnection,
+  camelToSnakeConnection,
+  snakeToCamelNoteVersion,
+  camelToSnakeNoteVersion,
+} from "@/lib/utils/case-mapping";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -45,41 +61,50 @@ export async function getNoteWithConnections(noteId: string) {
   if (versionsError) throw versionsError;
 
   return {
-    ...note,
-    connections,
-    history: versions,
+    ...snakeToCamelNote(note),
+    connections: connections.map(snakeToCamelConnection),
+    history: versions.map(snakeToCamelNoteVersion),
   };
 }
 
-export async function createNote(title: string, content: string) {
+export async function createNote(data: {
+  title: string;
+  content: string;
+  maturityState?: "SEED" | "SAPLING" | "GROWTH" | "MATURE" | "EVOLVING";
+}) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
 
+  const noteData = camelToSnakeNote({
+    title: data.title,
+    content: data.content,
+    maturityState: data.maturityState ?? "SEED",
+    userId: user.id,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  } as PartialNote);
+
   const { data: note, error: noteError } = await supabase
     .from("notes")
-    .insert([
-      {
-        title,
-        content,
-        maturity_state: "SEED",
-        user_id: user.id,
-      },
-    ])
+    .insert([noteData])
     .select()
     .single();
 
   if (noteError) throw noteError;
 
-  const { error: versionError } = await supabase.from("note_versions").insert([
-    {
-      note_id: note.id,
-      content,
-      version_number: 1,
-      user_id: user.id,
-    },
-  ]);
+  const versionData = camelToSnakeNoteVersion({
+    noteId: note.id,
+    content: data.content,
+    versionNumber: 1,
+    userId: user.id,
+    createdAt: new Date().toISOString(),
+  } as PartialNoteVersion);
+
+  const { error: versionError } = await supabase
+    .from("note_versions")
+    .insert([versionData]);
 
   if (versionError) throw versionError;
 
@@ -91,7 +116,7 @@ export async function updateNote(
   updates: {
     title?: string;
     content?: string;
-    maturity_state?: "SEED" | "SAPLING" | "GROWTH" | "MATURE" | "EVOLVING";
+    maturityState?: "SEED" | "SAPLING" | "GROWTH" | "MATURE" | "EVOLVING";
   }
 ) {
   const { data: versions, error: versionsError } = await supabase
@@ -106,12 +131,14 @@ export async function updateNote(
   const nextVersionNumber =
     versions.length > 0 ? versions[0].version_number + 1 : 1;
 
+  const noteUpdates = camelToSnakeNote({
+    ...updates,
+    updatedAt: new Date().toISOString(),
+  } as PartialNote);
+
   const { data: note, error: noteError } = await supabase
     .from("notes")
-    .update({
-      ...updates,
-      updated_at: new Date().toISOString(),
-    })
+    .update(noteUpdates)
     .eq("id", noteId)
     .select()
     .single();
@@ -119,20 +146,21 @@ export async function updateNote(
   if (noteError) throw noteError;
 
   if (updates.content) {
+    const versionData = camelToSnakeNoteVersion({
+      noteId,
+      content: updates.content,
+      versionNumber: nextVersionNumber,
+      createdAt: new Date().toISOString(),
+    } as PartialNoteVersion);
+
     const { error: versionError } = await supabase
       .from("note_versions")
-      .insert([
-        {
-          note_id: noteId,
-          content: updates.content,
-          version_number: nextVersionNumber,
-        },
-      ]);
+      .insert([versionData]);
 
     if (versionError) throw versionError;
   }
 
-  return note;
+  return snakeToCamelNote(note);
 }
 
 export async function createConnection(
@@ -144,40 +172,51 @@ export async function createConnection(
   context?: string,
   emergent: boolean = false
 ) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const connectionData = camelToSnakeConnection({
+    noteFrom,
+    noteTo,
+    connectionType,
+    strength,
+    bidirectional,
+    context,
+    emergent,
+    userId: user.id,
+    createdAt: new Date().toISOString(),
+  } as PartialConnection);
+
   const { data, error } = await supabase
     .from("connections")
-    .insert([
-      {
-        note_from: noteFrom,
-        note_to: noteTo,
-        connection_type: connectionType,
-        strength,
-        bidirectional,
-        context,
-        emergent,
-      },
-    ])
+    .insert([connectionData])
     .select();
 
   if (error) throw error;
 
   if (bidirectional) {
-    const { error: reverseError } = await supabase.from("connections").insert([
-      {
-        note_from: noteTo,
-        note_to: noteFrom,
-        connection_type: connectionType,
-        strength,
-        bidirectional,
-        context,
-        emergent,
-      },
-    ]);
+    const reverseConnectionData = camelToSnakeConnection({
+      noteFrom: noteTo,
+      noteTo: noteFrom,
+      connectionType,
+      strength,
+      bidirectional,
+      context,
+      emergent,
+      userId: user.id,
+      createdAt: new Date().toISOString(),
+    } as PartialConnection);
+
+    const { error: reverseError } = await supabase
+      .from("connections")
+      .insert([reverseConnectionData]);
 
     if (reverseError) throw reverseError;
   }
 
-  return data[0];
+  return snakeToCamelConnection(data[0]);
 }
 
 export async function searchNotes(query: string) {
@@ -195,7 +234,7 @@ export async function searchNotes(query: string) {
     .limit(10);
 
   if (error) throw error;
-  return data;
+  return data.map(snakeToCamelNote);
 }
 
 export async function getRecentNotes(limit: number = 5) {
@@ -212,18 +251,24 @@ export async function getRecentNotes(limit: number = 5) {
     .limit(limit);
 
   if (error) throw error;
-  return data;
+  return data.map(snakeToCamelNote);
 }
 
 export async function getNoteVersions(noteId: string) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
   const { data, error } = await supabase
     .from("note_versions")
     .select("*")
     .eq("note_id", noteId)
+    .eq("user_id", user.id)
     .order("version_number", { ascending: false });
 
   if (error) throw error;
-  return data;
+  return data.map(snakeToCamelNoteVersion);
 }
 
 export async function createNoteVersion(
@@ -231,26 +276,39 @@ export async function createNoteVersion(
   content: string,
   versionNumber: number
 ) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const versionData = camelToSnakeNoteVersion({
+    noteId,
+    content,
+    versionNumber,
+    userId: user.id,
+    createdAt: new Date().toISOString(),
+  } as PartialNoteVersion);
+
   const { data, error } = await supabase
     .from("note_versions")
-    .insert([
-      {
-        note_id: noteId,
-        content,
-        version_number: versionNumber,
-      },
-    ])
+    .insert([versionData])
     .select();
 
   if (error) throw error;
-  return data[0];
+  return snakeToCamelNoteVersion(data[0]);
 }
 
 export async function revertToVersion(noteId: string, versionId: string) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
   const { data: version, error: versionError } = await supabase
     .from("note_versions")
     .select("content, version_number")
     .eq("id", versionId)
+    .eq("user_id", user.id)
     .single();
 
   if (versionError) throw versionError;
@@ -259,33 +317,39 @@ export async function revertToVersion(noteId: string, versionId: string) {
     .from("notes")
     .select("content")
     .eq("id", noteId)
+    .eq("user_id", user.id)
     .single();
 
   if (noteError) throw noteError;
 
+  const newVersionData = camelToSnakeNoteVersion({
+    noteId,
+    content: currentNote.content,
+    versionNumber: version.version_number + 1,
+    userId: user.id,
+    createdAt: new Date().toISOString(),
+  } as PartialNoteVersion);
+
   const { error: newVersionError } = await supabase
     .from("note_versions")
-    .insert([
-      {
-        note_id: noteId,
-        content: currentNote.content,
-        version_number: version.version_number + 1,
-      },
-    ]);
+    .insert([newVersionData]);
 
   if (newVersionError) throw newVersionError;
 
+  const noteUpdates = camelToSnakeNote({
+    content: version.content,
+    updatedAt: new Date().toISOString(),
+  } as PartialNote);
+
   const { data: updatedNote, error: updateError } = await supabase
     .from("notes")
-    .update({
-      content: version.content,
-      updated_at: new Date().toISOString(),
-    })
+    .update(noteUpdates)
     .eq("id", noteId)
+    .eq("user_id", user.id)
     .select()
     .single();
 
   if (updateError) throw updateError;
 
-  return updatedNote;
+  return snakeToCamelNote(updatedNote);
 }

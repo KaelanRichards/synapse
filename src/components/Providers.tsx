@@ -1,7 +1,7 @@
 "use client";
 
 import { SessionContextProvider } from "@supabase/auth-helpers-react";
-import { useSupabase } from "@/hooks/useSupabase";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { ErrorBoundary } from "react-error-boundary";
 import { Suspense } from "react";
 
@@ -27,7 +27,7 @@ function LoadingFallback() {
 }
 
 export function Providers({ children }: { children: React.ReactNode }) {
-  const supabase = useSupabase();
+  const supabase = getSupabaseBrowserClient();
 
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback}>

@@ -14,102 +14,92 @@ export interface Database {
           id: string;
           title: string;
           content: string;
-          maturity_state: "SEED" | "SAPLING" | "GROWTH" | "MATURE" | "EVOLVING";
-          created_at: string;
-          updated_at: string;
-          user_id: string;
+          maturityState: "SEED" | "SAPLING" | "GROWTH" | "MATURE" | "EVOLVING";
+          createdAt: string;
+          updatedAt: string;
+          userId: string;
         };
         Insert: {
           id?: string;
           title: string;
           content: string;
-          maturity_state?:
-            | "SEED"
-            | "SAPLING"
-            | "GROWTH"
-            | "MATURE"
-            | "EVOLVING";
-          created_at?: string;
-          updated_at?: string;
-          user_id: string;
+          maturityState?: "SEED" | "SAPLING" | "GROWTH" | "MATURE" | "EVOLVING";
+          createdAt?: string;
+          updatedAt?: string;
+          userId: string;
         };
         Update: {
           id?: string;
           title?: string;
           content?: string;
-          maturity_state?:
-            | "SEED"
-            | "SAPLING"
-            | "GROWTH"
-            | "MATURE"
-            | "EVOLVING";
-          created_at?: string;
-          updated_at?: string;
-          user_id?: string;
+          maturityState?: "SEED" | "SAPLING" | "GROWTH" | "MATURE" | "EVOLVING";
+          createdAt?: string;
+          updatedAt?: string;
+          userId?: string;
         };
       };
       connections: {
         Row: {
           id: string;
-          note_from: string;
-          note_to: string;
-          connection_type: "related" | "prerequisite" | "refines";
+          noteFrom: string;
+          noteTo: string;
+          connectionType: "related" | "prerequisite" | "refines";
           strength: number;
           bidirectional: boolean;
           context: string | null;
           emergent: boolean;
-          created_at: string;
-          user_id: string;
+          createdAt: string;
+          userId: string;
         };
         Insert: {
           id?: string;
-          note_from: string;
-          note_to: string;
-          connection_type: "related" | "prerequisite" | "refines";
+          noteFrom: string;
+          noteTo: string;
+          connectionType: "related" | "prerequisite" | "refines";
           strength?: number;
           bidirectional?: boolean;
           context?: string | null;
           emergent?: boolean;
-          created_at?: string;
-          user_id: string;
+          createdAt?: string;
+          userId: string;
         };
         Update: {
           id?: string;
-          note_from?: string;
-          note_to?: string;
-          connection_type?: "related" | "prerequisite" | "refines";
+          noteFrom?: string;
+          noteTo?: string;
+          connectionType?: "related" | "prerequisite" | "refines";
           strength?: number;
           bidirectional?: boolean;
           context?: string | null;
           emergent?: boolean;
-          created_at?: string;
-          user_id?: string;
+          createdAt?: string;
+          userId?: string;
         };
       };
-      note_versions: {
+      noteVersions: {
         Row: {
           id: string;
-          note_id: string;
-          version_number: number;
+          noteId: string;
+          versionNumber: number;
           content: string;
-          created_at: string;
-          user_id: string;
+          createdAt: string;
+          userId: string;
         };
         Insert: {
           id?: string;
-          note_id: string;
-          version_number: number;
+          noteId: string;
+          versionNumber: number;
           content: string;
-          created_at?: string;
-          user_id: string;
+          createdAt?: string;
+          userId: string;
         };
         Update: {
           id?: string;
-          note_id?: string;
-          version_number?: number;
+          noteId?: string;
+          versionNumber?: number;
           content?: string;
-          created_at?: string;
-          user_id?: string;
+          createdAt?: string;
+          userId?: string;
         };
       };
     };

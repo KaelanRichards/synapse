@@ -6,30 +6,38 @@ import { createConnection, searchNotes } from "@/lib/supabase";
 import { useDebounce } from "@/hooks/useDebounce";
 import { PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 
+interface Connection {
+  id: string;
+  noteFrom: string;
+  noteTo: string;
+  connectionType: "related" | "prerequisite" | "refines";
+  strength: number;
+  bidirectional: boolean;
+  context?: string;
+  emergent: boolean;
+}
+
 interface ConnectionManagerProps {
   noteId: string;
-  existingConnections: Array<{
-    id: string;
-    note_to: string;
-    connection_type: "related" | "prerequisite" | "refines";
-    strength: number;
-    context?: string;
-  }>;
+  existingConnections: Connection[];
   onConnectionsChange?: () => void;
+  noteTo: string;
+  connectionType: "related" | "prerequisite" | "refines";
+  onClose: () => void;
 }
 
 export default function ConnectionManager({
   noteId,
   existingConnections,
   onConnectionsChange,
+  noteTo,
+  connectionType,
+  onClose,
 }: ConnectionManagerProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [selectedNote, setSelectedNote] = useState<any>(null);
-  const [connectionType, setConnectionType] = useState<
-    "related" | "prerequisite" | "refines"
-  >("related");
   const [strength, setStrength] = useState(5);
   const [context, setContext] = useState("");
   const [isCreating, setIsCreating] = useState(false);
@@ -49,7 +57,7 @@ export default function ConnectionManager({
         const filteredResults = results.filter(
           (note) =>
             note.id !== noteId &&
-            !existingConnections.some((conn) => conn.note_to === note.id)
+            !existingConnections.some((conn) => conn.noteTo === note.id)
         );
         setSearchResults(filteredResults);
       } catch (error) {
@@ -66,7 +74,6 @@ export default function ConnectionManager({
   const handleCreateConnection = async () => {
     if (!selectedNote) return;
 
-    setIsCreating(true);
     try {
       await createConnection(
         noteId,
@@ -76,18 +83,14 @@ export default function ConnectionManager({
         false,
         context
       );
-      // Reset form
-      setSelectedNote(null);
-      setConnectionType("related");
-      setStrength(5);
-      setContext("");
-      setSearchQuery("");
-      // Notify parent of changes
+
       onConnectionsChange?.();
+      setSelectedNote(null);
+      setSearchQuery("");
+      setContext("");
+      setStrength(5);
     } catch (error) {
       console.error("Error creating connection:", error);
-    } finally {
-      setIsCreating(false);
     }
   };
 
@@ -171,13 +174,7 @@ export default function ConnectionManager({
               Connection Type
             </label>
             <select
-              id="type"
               value={connectionType}
-              onChange={(e) =>
-                setConnectionType(
-                  e.target.value as "related" | "prerequisite" | "refines"
-                )
-              }
               className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
             >
               <option value="related">Related</option>

@@ -57,10 +57,10 @@ describe("useNotes", () => {
         id: "1",
         title: "Test Note",
         content: "Test Content",
-        maturity_state: "SEED",
-        created_at: "2024-01-01T00:00:00.000Z",
-        updated_at: "2024-01-01T00:00:00.000Z",
-        user_id: mockUser.id,
+        maturityState: "SEED",
+        createdAt: "2024-01-01T00:00:00.000Z",
+        updatedAt: "2024-01-01T00:00:00.000Z",
+        userId: mockUser.id,
       },
     ];
 
@@ -94,13 +94,13 @@ describe("useNotes", () => {
 
   it("should create note successfully", async () => {
     const mockNote = {
-      id: "1",
-      title: "New Note",
-      content: "New Content",
-      maturity_state: "SEED",
-      created_at: "2024-01-01T00:00:00.000Z",
-      updated_at: "2024-01-01T00:00:00.000Z",
-      user_id: mockUser.id,
+      id: "123",
+      title: "Test Note",
+      content: "Test Content",
+      maturityState: "SEED",
+      createdAt: "2024-01-01T00:00:00.000Z",
+      updatedAt: "2024-01-01T00:00:00.000Z",
+      userId: mockUser.id,
     };
 
     const mockClient = createBaseMockClient();
@@ -119,9 +119,9 @@ describe("useNotes", () => {
     await act(async () => {
       const note = await result.current.createNote("New Note", "New Content");
       expect(note).toMatchObject({
-        id: "1",
-        title: "New Note",
-        content: "New Content",
+        id: "123",
+        title: "Test Note",
+        content: "Test Content",
         maturityState: "SEED",
         createdAt: "2024-01-01T00:00:00.000Z",
         updatedAt: "2024-01-01T00:00:00.000Z",
@@ -133,7 +133,7 @@ describe("useNotes", () => {
       expect.objectContaining({
         title: "New Note",
         content: "New Content",
-        maturity_state: "SEED",
+        maturityState: "SEED",
       }),
     ]);
   });

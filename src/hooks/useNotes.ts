@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { useSupabaseClient, useUser } from "@supabase/auth-helpers-react";
 import { Note } from "@/types";
 import { Database } from "@/types/supabase";
+import { snakeToCamelNote, camelToSnakeNote } from "@/lib/utils/case-mapping";
 
 export function useNotes() {
   const [isLoading, setIsLoading] = useState(false);
@@ -23,13 +24,7 @@ export function useNotes() {
 
       if (error) throw error;
 
-      return data.map((note) => ({
-        ...note,
-        maturityState: note.maturity_state,
-        createdAt: note.created_at,
-        updatedAt: note.updated_at,
-        userId: note.user_id,
-      })) as Note[];
+      return data.map(snakeToCamelNote);
     } catch (err) {
       setError(err as Error);
       return [];
@@ -53,25 +48,19 @@ export function useNotes() {
         const { data, error } = await supabase
           .from("notes")
           .insert([
-            {
+            camelToSnakeNote({
               title,
               content,
-              maturity_state: maturityState,
-              user_id: user.id,
-            },
+              maturityState,
+              userId: user.id,
+            } as Note),
           ])
           .select()
           .single();
 
         if (error) throw error;
 
-        return {
-          ...data,
-          maturityState: data.maturity_state,
-          createdAt: data.created_at,
-          updatedAt: data.updated_at,
-          userId: data.user_id,
-        } as Note;
+        return snakeToCamelNote(data);
       } catch (err) {
         setError(err as Error);
         throw err;
@@ -95,27 +84,19 @@ export function useNotes() {
 
         const { data, error } = await supabase
           .from("notes")
-          .update({
-            ...(updates.title && { title: updates.title }),
-            ...(updates.content && { content: updates.content }),
-            ...(updates.maturityState && {
-              maturity_state: updates.maturityState,
-            }),
-            updated_at: new Date().toISOString(),
-          })
+          .update(
+            camelToSnakeNote({
+              ...updates,
+              updatedAt: new Date().toISOString(),
+            } as Note)
+          )
           .eq("id", id)
           .select()
           .single();
 
         if (error) throw error;
 
-        return {
-          ...data,
-          maturityState: data.maturity_state,
-          createdAt: data.created_at,
-          updatedAt: data.updated_at,
-          userId: data.user_id,
-        } as Note;
+        return snakeToCamelNote(data);
       } catch (err) {
         setError(err as Error);
         throw err;

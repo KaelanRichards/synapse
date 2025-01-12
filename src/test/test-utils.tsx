@@ -4,13 +4,12 @@ import { User } from "@supabase/supabase-js";
 import { useSupabaseClient, useUser } from "@supabase/auth-helpers-react";
 
 // Mock user for testing
-export const mockUser: User = {
-  id: "test-user-id",
+export const mockUser = {
+  id: "123",
   email: "test@example.com",
-  created_at: "2024-01-01T00:00:00.000Z",
-  app_metadata: {},
-  user_metadata: {},
-  aud: "authenticated",
+  createdAt: "2024-01-01T00:00:00.000Z",
+  appMetadata: {},
+  userMetadata: {},
 };
 
 // Type for mock query response

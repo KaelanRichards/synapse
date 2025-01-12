@@ -2,6 +2,10 @@ import { useCallback, useState } from "react";
 import { useSupabaseClient, useUser } from "@supabase/auth-helpers-react";
 import { Connection } from "@/types";
 import { Database } from "@/types/supabase";
+import {
+  snakeToCamelConnection,
+  camelToSnakeConnection,
+} from "@/lib/utils/case-mapping";
 
 export function useConnections() {
   const [isLoading, setIsLoading] = useState(false);
@@ -30,14 +34,7 @@ export function useConnections() {
 
         if (error) throw error;
 
-        return data.map((conn) => ({
-          ...conn,
-          noteFrom: conn.note_from,
-          noteTo: conn.note_to,
-          connectionType: conn.connection_type,
-          createdAt: conn.created_at,
-          userId: conn.user_id,
-        })) as Connection[];
+        return data.map(snakeToCamelConnection);
       } catch (err) {
         setError(err as Error);
         return [];
@@ -66,44 +63,37 @@ export function useConnections() {
         const { data, error } = await supabase
           .from("connections")
           .insert([
-            {
-              note_from: noteFrom,
-              note_to: noteTo,
-              connection_type: connectionType,
+            camelToSnakeConnection({
+              noteFrom,
+              noteTo,
+              connectionType,
               strength,
               bidirectional,
               context,
               emergent: false,
-              user_id: user.id,
-            },
+              userId: user.id,
+            } as Connection),
           ])
           .select()
           .single();
 
         if (error) throw error;
 
-        const connection = {
-          ...data,
-          noteFrom: data.note_from,
-          noteTo: data.note_to,
-          connectionType: data.connection_type,
-          createdAt: data.created_at,
-          userId: data.user_id,
-        } as Connection;
+        const connection = snakeToCamelConnection(data);
 
         // If bidirectional, create reverse connection
         if (bidirectional) {
           await supabase.from("connections").insert([
-            {
-              note_from: noteTo,
-              note_to: noteFrom,
-              connection_type: connectionType,
+            camelToSnakeConnection({
+              noteFrom: noteTo,
+              noteTo: noteFrom,
+              connectionType,
               strength,
               bidirectional,
               context,
               emergent: false,
-              user_id: user.id,
-            },
+              userId: user.id,
+            } as Connection),
           ]);
         }
 
@@ -131,21 +121,14 @@ export function useConnections() {
 
         const { data, error } = await supabase
           .from("connections")
-          .update(updates)
+          .update(camelToSnakeConnection(updates as Connection))
           .eq("id", id)
           .select()
           .single();
 
         if (error) throw error;
 
-        return {
-          ...data,
-          noteFrom: data.note_from,
-          noteTo: data.note_to,
-          connectionType: data.connection_type,
-          createdAt: data.created_at,
-          userId: data.user_id,
-        } as Connection;
+        return snakeToCamelConnection(data);
       } catch (err) {
         setError(err as Error);
         throw err;

@@ -91,7 +91,7 @@ export default function NoteDetailPage({ params }: NoteDetailPageProps) {
               id: note.id,
               title: note.title,
               content: note.content,
-              maturity_state: note.maturity_state,
+              maturityState: note.maturityState,
             }}
           />
         </div>
@@ -139,7 +139,7 @@ export default function NoteDetailPage({ params }: NoteDetailPageProps) {
               {/* Maturity State Badge */}
               <div className="mb-4">
                 <span className="inline-flex items-center px-3 py-0.5 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                  {note.maturity_state}
+                  {note.maturityState}
                 </span>
               </div>
 
@@ -153,10 +153,18 @@ export default function NoteDetailPage({ params }: NoteDetailPageProps) {
                 <dl className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
                   <div>
                     <dt className="text-sm font-medium text-gray-500">
+                      Maturity
+                    </dt>
+                    <dd className="mt-1 text-sm text-gray-900">
+                      {note.maturityState}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-sm font-medium text-gray-500">
                       Created
                     </dt>
                     <dd className="mt-1 text-sm text-gray-900">
-                      {new Date(note.created_at).toLocaleDateString()}
+                      {new Date(note.createdAt).toLocaleDateString()}
                     </dd>
                   </div>
                   <div>
@@ -164,7 +172,7 @@ export default function NoteDetailPage({ params }: NoteDetailPageProps) {
                       Last Updated
                     </dt>
                     <dd className="mt-1 text-sm text-gray-900">
-                      {new Date(note.updated_at).toLocaleDateString()}
+                      {new Date(note.updatedAt).toLocaleDateString()}
                     </dd>
                   </div>
                 </dl>
@@ -194,20 +202,23 @@ export default function NoteDetailPage({ params }: NoteDetailPageProps) {
                     noteId={note.id}
                     existingConnections={note.connections || []}
                     onConnectionsChange={loadNote}
+                    noteTo={note.id}
+                    connectionType={note.connectionType}
+                    onClose={() => setIsManagingConnections(false)}
                   />
                 ) : note.connections && note.connections.length > 0 ? (
                   <ul className="divide-y divide-gray-200">
                     {note.connections.map((connection: any) => (
                       <li key={connection.id} className="py-4">
                         <Link
-                          href={`/notes/${connection.note_to}`}
+                          href={`/notes/${connection.noteTo}`}
                           className="block hover:bg-gray-50 -m-4 p-4"
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center space-x-3">
                                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
-                                  {connection.connection_type}
+                                  {connection.connectionType}
                                 </span>
                                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
                                   Strength: {connection.strength}
