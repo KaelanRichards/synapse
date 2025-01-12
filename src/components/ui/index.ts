@@ -8,3 +8,4 @@ export * from './Toggle';
 export * from './Modal';
 export * from './Tooltip';
 export * from './Alert';
+export * from './Loading';

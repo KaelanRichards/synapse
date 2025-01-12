@@ -1,32 +1,57 @@
 import { useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/router';
 import { Input, Button, Card, Alert } from '@/components/ui';
 import Link from 'next/link';
+import supabase from '@/lib/supabase';
 
-export default function SignIn() {
+export default function ResetPassword() {
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const { signIn } = useAuth();
+  const [success, setSuccess] = useState(false);
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+
     try {
-      await signIn(email, password);
-      router.push('/');
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password/confirm`,
+      });
+      if (error) throw error;
+      setSuccess(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     }
   };
+
+  if (success) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+        <Card className="w-full max-w-md p-8">
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-center text-neutral-900">
+              Check your email
+            </h2>
+            <p className="text-center text-neutral-600">
+              We've sent you a password reset link. Please check your email and
+              follow the instructions.
+            </p>
+            <Button onClick={() => router.push('/signin')} className="w-full">
+              Return to Sign In
+            </Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <Card className="w-full max-w-md p-8">
         <div className="space-y-6">
           <h2 className="text-2xl font-bold text-center text-neutral-900">
-            Sign in to your account
+            Reset your password
           </h2>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -40,26 +65,6 @@ export default function SignIn() {
               placeholder="Enter your email"
             />
 
-            <div className="space-y-1">
-              <Input
-                id="password"
-                label="Password"
-                type="password"
-                required
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder="Enter your password"
-              />
-              <div className="text-right">
-                <Link
-                  href="/reset-password"
-                  className="text-sm text-blue-600 hover:text-blue-800"
-                >
-                  Forgot password?
-                </Link>
-              </div>
-            </div>
-
             {error && (
               <Alert variant="error" className="mt-4">
                 {error}
@@ -67,16 +72,16 @@ export default function SignIn() {
             )}
 
             <Button type="submit" className="w-full">
-              Sign in
+              Send reset link
             </Button>
 
             <p className="text-sm text-center text-neutral-600">
-              Don't have an account?{' '}
+              Remember your password?{' '}
               <Link
-                href="/signup"
+                href="/signin"
                 className="text-blue-600 hover:text-blue-800"
               >
-                Sign up
+                Sign in
               </Link>
             </p>
           </form>

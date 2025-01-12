@@ -1,8 +1,35 @@
 import type { NextPage } from 'next';
+import { useEffect } from 'react';
+import { useRouter } from 'next/router';
 import Layout from '@/components/Layout';
 import NoteList from '@/components/NoteList';
+import { useAuth } from '@/contexts/AuthContext';
+import { Loading } from '@/components/ui';
 
 const Home: NextPage = () => {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/signin');
+    }
+  }, [loading, user, router]);
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-[50vh]">
+          <Loading size="lg" />
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
+
   return (
     <Layout>
       <div className="space-y-6">
