@@ -18,9 +18,19 @@ export default function ResetPassword() {
     setLoading(true);
     setError(null);
 
+    if (!process.env.NEXT_PUBLIC_APP_URL) {
+      setError("Application URL is not configured properly");
+      setLoading(false);
+      return;
+    }
+
     try {
+      const redirectUrl = new URL(
+        "/update-password",
+        process.env.NEXT_PUBLIC_APP_URL
+      ).toString();
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/update-password`,
+        redirectTo: redirectUrl,
       });
 
       if (error) throw error;
