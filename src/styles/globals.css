@@ -2,9 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
+body {
+  @apply text-neutral-900 antialiased;
+}
+
 @layer base {
   body {
-    @apply text-gray-900 antialiased;
+    @apply text-neutral-900 antialiased;
   }
 }
 
