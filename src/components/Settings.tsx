@@ -44,7 +44,7 @@ const Settings: React.FC = () => {
         <div className="space-y-4">
           {/* Font Family */}
           <div className="flex gap-4">
-            {['serif', 'sans', 'mono'].map(font => (
+            {(['serif', 'sans', 'mono'] as const).map(font => (
               <button
                 key={font}
                 onClick={() => setFontFamily(font)}

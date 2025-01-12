@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSupabase } from '@/contexts/SupabaseContext';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Select, Button, Alert } from '@/components/ui';
 
 type MaturityState = 'SEED' | 'SAPLING' | 'GROWTH' | 'MATURE' | 'EVOLVING';
+type MaturityFilter = MaturityState | 'ALL';
 
 interface Note {
   id: string;
@@ -14,7 +15,14 @@ interface Note {
   content: string;
 }
 
-const MATURITY_OPTIONS = [
+interface MaturityOption {
+  value: MaturityFilter;
+  label: string;
+  icon: string;
+  description: string;
+}
+
+const MATURITY_OPTIONS: readonly MaturityOption[] = [
   {
     value: 'ALL',
     label: 'All Notes',
@@ -64,29 +72,55 @@ const LoadingSkeleton = () => (
   </div>
 );
 
-const NoteList: React.FC = () => {
+export default function NoteList() {
   const supabase = useSupabase();
-  const [filter, setFilter] = React.useState<MaturityState | 'ALL'>('ALL');
+  const queryClient = useQueryClient();
+  const [selectedMaturity, setSelectedMaturity] =
+    useState<MaturityFilter>('ALL');
+
+  // Set up real-time subscription
+  useEffect(() => {
+    const subscription = supabase
+      .channel('notes_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'notes',
+        },
+        () => {
+          queryClient.invalidateQueries({
+            queryKey: ['notes', selectedMaturity],
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [queryClient, supabase, selectedMaturity]);
 
   const {
     data: notes,
     isLoading,
     error,
   } = useQuery({
-    queryKey: ['notes', filter],
+    queryKey: ['notes', selectedMaturity],
     queryFn: async () => {
       let query = supabase
         .from('notes')
-        .select('id, title, content, maturity_state, created_at')
-        .order('updated_at', { ascending: false });
+        .select('*')
+        .order('created_at', { ascending: false });
 
-      if (filter !== 'ALL') {
-        query = query.eq('maturity_state', filter);
+      if (selectedMaturity !== 'ALL') {
+        query = query.eq('maturity_state', selectedMaturity);
       }
 
       const { data, error } = await query;
       if (error) throw error;
-      return data || [];
+      return data as Note[];
     },
     staleTime: 30000,
     refetchOnWindowFocus: true,
@@ -95,10 +129,7 @@ const NoteList: React.FC = () => {
 
   if (error) {
     return (
-      <Alert
-        variant="error"
-        className="max-w-3xl mx-auto mt-8 bg-error-50 text-error-700 border border-error-200 rounded-lg p-4"
-      >
+      <Alert variant="error">
         <h3 className="font-medium">Error loading notes</h3>
         <p>
           {error instanceof Error
@@ -109,103 +140,67 @@ const NoteList: React.FC = () => {
     );
   }
 
-  const getPreviewText = (content: string) => {
-    return content.length > 200 ? content.slice(0, 200) + '...' : content;
-  };
-
   return (
-    <div className="h-full py-8">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center mb-8">
-          <div className="relative group">
-            <Select
-              value={filter}
-              onChange={e => setFilter(e.target.value as MaturityState | 'ALL')}
-              className="
-                w-48 bg-transparent border border-accent-200 rounded-lg
-                text-accent-700 focus:ring-1 focus:ring-accent-300
-                transition-shadow duration-medium
-              "
-            >
-              {MATURITY_OPTIONS.map(option => (
-                <option key={option.value} value={option.value}>
-                  {option.icon} {option.label}
-                </option>
-              ))}
-            </Select>
-            <div className="absolute left-0 w-64 mt-2 py-2 px-3 bg-white dark:bg-gray-800 rounded-lg shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-medium pointer-events-none z-10">
-              {MATURITY_OPTIONS.find(opt => opt.value === filter)?.description}
-            </div>
-          </div>
-
-          <Link href="/notes/new">
-            <Button
-              variant="primary"
-              className="
-                bg-accent-600 hover:bg-accent-700 text-white
-                px-6 py-2 rounded-lg shadow-sm
-                transition-all duration-medium
-              "
-            >
-              New Note
-            </Button>
-          </Link>
-        </div>
-
-        {isLoading ? (
-          <LoadingSkeleton />
-        ) : (
-          <div className="grid gap-6 sm:grid-cols-1 lg:grid-cols-2">
-            {(notes || []).map(note => (
-              <Link
-                key={note.id}
-                href={`/notes/${note.id}`}
-                className={`
-                  block p-6 rounded-lg bg-white dark:bg-gray-800
-                  border border-accent-100 dark:border-gray-700
-                  hover:shadow-lg transition-all duration-medium
-                  note-state-${note.maturity_state.toLowerCase()}
-                `}
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-xl font-serif text-accent-900 dark:text-accent-100">
-                    {note.title}
-                  </h3>
-                  <span className="text-sm text-accent-500">
-                    {
-                      MATURITY_OPTIONS.find(
-                        opt => opt.value === note.maturity_state
-                      )?.icon
-                    }
-                  </span>
-                </div>
-                <p className="text-accent-600 dark:text-accent-300 line-clamp-3 font-serif leading-relaxed">
-                  {getPreviewText(note.content)}
-                </p>
-                <div className="mt-3 text-sm text-accent-400 dark:text-accent-500">
-                  {new Date(note.created_at).toLocaleDateString(undefined, {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                  })}
-                </div>
-              </Link>
-            ))}
-            {(notes || []).length === 0 && (
-              <div className="text-center py-16 text-accent-500 col-span-full">
-                <p className="text-xl mb-4">
-                  Your library awaits its first note
-                </p>
-                <p className="text-sm">
-                  Begin your journey of connected thoughts
-                </p>
-              </div>
-            )}
-          </div>
-        )}
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <Select
+          value={selectedMaturity}
+          onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+            setSelectedMaturity(e.target.value as MaturityFilter)
+          }
+          className="w-48"
+        >
+          {MATURITY_OPTIONS.map(option => (
+            <option key={option.value} value={option.value}>
+              {option.icon} {option.label}
+            </option>
+          ))}
+        </Select>
+        <Link href="/notes/new">
+          <Button variant="primary">New Note</Button>
+        </Link>
       </div>
+
+      {isLoading ? (
+        <LoadingSkeleton />
+      ) : notes?.length === 0 ? (
+        <div className="text-center py-8 text-ink-faint">
+          <p>No notes found</p>
+          {selectedMaturity !== 'ALL' && (
+            <p className="mt-2">
+              Try selecting a different maturity state or{' '}
+              <button
+                onClick={() => setSelectedMaturity('ALL')}
+                className="text-primary-600 hover:underline"
+              >
+                view all notes
+              </button>
+            </p>
+          )}
+        </div>
+      ) : (
+        <div className="grid gap-6">
+          {notes?.map(note => (
+            <Link
+              key={note.id}
+              href={`/notes/${note.id}`}
+              className="block p-4 rounded-lg border border-accent-200 hover:border-accent-300 transition-colors"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-medium text-lg">{note.title}</h3>
+                <span className="text-sm text-ink-faint">
+                  {
+                    MATURITY_OPTIONS.find(
+                      opt => opt.value === note.maturity_state
+                    )?.icon
+                  }
+                </span>
+              </div>
+              <p className="text-ink-faint line-clamp-2">{note.content}</p>
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   );
-};
-
-export default NoteList;
+}

@@ -5,6 +5,7 @@ import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { useRouter } from 'next/router';
 import { cn } from '@/lib/utils';
 import { useEditor } from '@/contexts/EditorContext';
+import { useNoteMutations } from '@/hooks/useNoteMutations';
 
 interface CommandPaletteProps {
   isOpen: boolean;
@@ -24,7 +25,8 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
   const router = useRouter();
   const [search, setSearch] = useState('');
   const [recentNotes, setRecentNotes] = useState<any[]>([]);
-  const { saveNote, toggleAutoSave, setMode } = useEditor();
+  const { setMode, toggleAutoSave, state } = useEditor();
+  const { updateNote } = useNoteMutations();
 
   useEffect(() => {
     if (isOpen) {
@@ -47,7 +49,12 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
         router.push('/settings');
         break;
       case 'save':
-        await saveNote();
+        if (currentNote?.id) {
+          updateNote.mutate({
+            id: currentNote.id,
+            content: currentNote.content,
+          });
+        }
         break;
       case 'autosave':
         toggleAutoSave();
@@ -124,7 +131,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
                       onSelect={() => handleSelect('autosave')}
                       className="p-2 cursor-pointer hover:bg-ink-faint/5"
                     >
-                      Toggle Auto-Save
+                      {state.autoSave ? 'Disable' : 'Enable'} Auto-Save
                     </Command.Item>
                   </>
                 )}
