@@ -1,87 +1,72 @@
 export const colors = {
-  // Natural Elements
-  mist: {
-    white: '#f8fafc',
-    gray: '#f1f5f9',
-    black: '#1f2937',
-  },
-  // Organic Hues
-  garden: {
-    moss: '#d8e3d8',
-    water: '#c3dce3',
-    silk: '#eaeaea',
-  },
-  // Depth & Flow
-  water: {
-    vapor: '#e5f0f3',
-    surface: '#c3dce3',
-    shallow: '#9fc9d6',
-    deep: '#8db3bf',
-  },
-  paper: {
-    light: '#FFFFFF',
+  // Paper-like surfaces
+  surface: {
+    pure: '#FFFFFF',
+    faint: '#FAFAFA',
+    dim: '#F5F5F5',
     dark: '#1A1A1A',
   },
-  text: {
-    light: '#1f2937',
-    dark: '#FFFFFF',
+  // Ink-like text
+  ink: {
+    pure: '#000000',
+    rich: '#1A1A1A',
+    muted: '#6B7280',
+    faint: '#9CA3AF',
+    inverse: '#FFFFFF',
   },
-  error: {
-    50: '#FEF2F2',
-    100: '#FEE2E2',
-    200: '#FECACA',
-    300: '#FCA5A5',
-    400: '#F87171',
-    500: '#EF4444',
-    600: '#DC2626',
-    700: '#B91C1C',
+  // Subtle accents
+  accent: {
+    primary: '#3B82F6',
+    faded: 'rgba(59, 130, 246, 0.1)',
+    success: '#10B981',
+    warning: '#F59E0B',
+    error: '#EF4444',
   },
 } as const;
 
 export const maturityStateColors = {
   SEED: {
-    bg: 'rgba(229, 240, 243, 0.15)', // vapor-like
-    border: 'rgba(229, 240, 243, 0.3)',
+    bg: 'rgba(59, 130, 246, 0.05)',
+    border: 'rgba(59, 130, 246, 0.1)',
   },
   SAPLING: {
-    bg: 'rgba(195, 220, 227, 0.25)', // surface water
-    border: 'rgba(195, 220, 227, 0.4)',
+    bg: 'rgba(16, 185, 129, 0.05)',
+    border: 'rgba(16, 185, 129, 0.1)',
   },
   GROWTH: {
-    bg: 'rgba(159, 201, 214, 0.35)', // shallow water
-    border: 'rgba(159, 201, 214, 0.5)',
+    bg: 'rgba(245, 158, 11, 0.05)',
+    border: 'rgba(245, 158, 11, 0.1)',
   },
   MATURE: {
-    bg: 'rgba(141, 179, 191, 0.45)', // deep water
-    border: 'rgba(141, 179, 191, 0.6)',
+    bg: 'rgba(99, 102, 241, 0.05)',
+    border: 'rgba(99, 102, 241, 0.1)',
   },
   EVOLVING: {
-    bg: 'rgba(234, 234, 234, 0.15)', // silk-like
-    border: 'rgba(234, 234, 234, 0.3)',
+    bg: 'rgba(236, 72, 153, 0.05)',
+    border: 'rgba(236, 72, 153, 0.1)',
   },
 } as const;
 
 export const connectionColors = {
-  related: { color: 'rgba(234, 234, 234, 0.6)', animated: true },
-  prerequisite: { color: 'rgba(195, 220, 227, 0.7)', animated: true },
-  refines: { color: 'rgba(159, 201, 214, 0.8)', animated: true },
+  related: { color: 'rgba(156, 163, 175, 0.3)', animated: true },
+  prerequisite: { color: 'rgba(59, 130, 246, 0.3)', animated: true },
+  refines: { color: 'rgba(16, 185, 129, 0.3)', animated: true },
 } as const;
 
 export const spacing = {
-  '1.5': '0.375rem',
-  '2.5': '0.625rem',
-  '3.5': '0.875rem',
-  xs: '0.25rem',
-  sm: '0.5rem',
+  '2xs': '0.25rem',
+  xs: '0.5rem',
+  sm: '0.75rem',
   md: '1rem',
   lg: '1.5rem',
   xl: '2rem',
   '2xl': '3rem',
-  '15': '3.75rem',
+  '3xl': '4rem',
 } as const;
 
 export const typography = {
   fonts: {
+    mono: 'JetBrains Mono, monospace',
     sans: 'Inter, system-ui, -apple-system, sans-serif',
     serif: 'Merriweather, Georgia, serif',
   },
@@ -92,6 +77,7 @@ export const typography = {
     lg: '1.125rem',
     xl: '1.25rem',
     '2xl': '1.5rem',
+    '3xl': '1.875rem',
   },
   lineHeight: {
     none: '1',
@@ -102,27 +88,37 @@ export const typography = {
     loose: '2',
     prose: '1.8',
   },
+  letterSpacing: {
+    tighter: '-0.05em',
+    tight: '-0.025em',
+    normal: '0em',
+    wide: '0.025em',
+    wider: '0.05em',
+  },
 } as const;
 
 export const shadows = {
-  'light-mist': '0 4px 15px rgba(0, 0, 0, 0.04)',
-  'deep-well': '0 10px 30px rgba(0, 0, 0, 0.15)',
+  subtle: '0 1px 2px rgba(0, 0, 0, 0.05)',
+  floating:
+    '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+  command: '0 8px 16px rgba(0, 0, 0, 0.08), 0 4px 8px rgba(0, 0, 0, 0.06)',
 } as const;
 
 export const transitions = {
   duration: {
-    ripple: '600ms',
-    flow: '400ms',
-    gentle: '800ms',
+    instant: '100ms',
+    fast: '200ms',
+    normal: '300ms',
+    slow: '500ms',
   },
   timing: {
-    water: 'cubic-bezier(0.4, 0, 0.2, 1)',
-    breeze: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
+    ease: 'cubic-bezier(0.4, 0, 0.2, 1)',
+    gentle: 'cubic-bezier(0.4, 0.14, 0.3, 1)',
   },
 } as const;
 
-export const gradients = {
-  mist: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
-  water: 'linear-gradient(135deg, #e5f0f3 0%, #9fc9d6 100%)',
-  depth: 'linear-gradient(135deg, #9fc9d6 0%, #8db3bf 100%)',
+export const blur = {
+  sm: '4px',
+  md: '8px',
+  lg: '12px',
 } as const;

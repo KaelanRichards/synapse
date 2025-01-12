@@ -3,200 +3,155 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
-    --background: theme('colors.paper.light');
-    --foreground: theme('colors.text.light');
-    --reading-width: 65ch;
-    --side-margin: max(2rem, calc((100vw - var(--reading-width)) / 2));
-    --flow-transition: cubic-bezier(0.2, 0.8, 0.2, 1);
-  }
-
-  [data-theme='dark'] {
-    --background: theme('colors.paper.dark');
-    --foreground: theme('colors.text.dark');
-  }
-
+  /* Base styles */
   html {
-    @apply h-full antialiased;
-    font-size: clamp(16px, 2vw, 18px);
+    @apply antialiased;
+    text-rendering: optimizeLegibility;
   }
 
   body {
-    @apply h-full bg-[var(--background)] text-[var(--foreground)] font-serif;
-    font-feature-settings:
-      'liga' 1,
-      'kern' 1;
-    text-rendering: optimizeLegibility;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+    @apply bg-surface-pure dark:bg-surface-dark text-ink-rich dark:text-ink-inverse;
+    @apply transition-colors duration-normal ease-gentle;
+  }
+
+  /* Typography */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-serif;
+  }
+
+  /* Focus styles */
+  *:focus {
+    @apply outline-none ring-1 ring-accent-primary/20;
+  }
+
+  *:focus-visible {
+    @apply ring-2 ring-accent-primary/40;
   }
 }
 
 @layer components {
+  /* Command palette styles */
+  .cmdk-root {
+    @apply w-full max-w-2xl mx-auto;
+  }
+
+  .cmdk-input {
+    @apply w-full px-4 py-3 text-lg bg-transparent border-0 focus:ring-0;
+    @apply font-sans text-ink-rich dark:text-ink-inverse placeholder-ink-faint;
+  }
+
+  .cmdk-list {
+    @apply mt-2 overflow-y-auto max-h-96;
+  }
+
+  .cmdk-group {
+    @apply px-2 pb-2;
+  }
+
+  .cmdk-group-heading {
+    @apply px-2 py-1 text-xs font-medium text-ink-muted uppercase tracking-wider;
+  }
+
+  .cmdk-item {
+    @apply px-3 py-2 rounded-md text-ink-rich dark:text-ink-inverse cursor-pointer;
+    @apply transition-colors duration-instant ease-gentle;
+  }
+
+  .cmdk-item[data-selected='true'] {
+    @apply bg-accent-faded;
+  }
+
+  /* Note editor styles */
   .note-content {
-    @apply mx-auto px-8 py-12 md:py-16;
-    max-width: var(--reading-width);
-    margin-left: var(--side-margin);
-    margin-right: var(--side-margin);
-    transition: opacity 0.6s var(--flow-transition);
+    @apply max-w-prose mx-auto px-4;
   }
 
-  .note-content p {
-    @apply mb-6 leading-relaxed text-base opacity-90;
-    transition: opacity 0.4s var(--flow-transition);
-  }
-
-  .note-content:hover p {
-    @apply opacity-100;
+  .note-content :is(h1, h2, h3, h4, h5, h6) {
+    @apply font-serif font-medium;
   }
 
   .note-content h1 {
-    @apply text-2xl font-semibold mb-8 leading-relaxed tracking-tight;
+    @apply text-3xl;
   }
 
   .note-content h2 {
-    @apply text-xl font-semibold mb-6 leading-relaxed;
+    @apply text-2xl;
   }
 
   .note-content h3 {
-    @apply text-lg font-semibold mb-4 leading-relaxed;
+    @apply text-xl;
   }
 
-  .side-panel {
-    @apply fixed top-0 left-0 h-full bg-[var(--background)] shadow-md transform -translate-x-full transition-transform;
-    width: min(80vw, 20rem);
-    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  .note-content p {
+    @apply text-lg leading-relaxed;
   }
 
-  .side-panel.open {
-    @apply translate-x-0;
+  .note-content a {
+    @apply text-accent-primary underline-offset-2 hover:underline;
   }
 
-  .connection-point {
-    @apply relative inline;
-    text-decoration-thickness: 1px;
-    text-decoration-color: theme('colors.water.shallow');
-    text-underline-offset: 2px;
-    transition: all 0.4s var(--flow-transition);
-  }
-
-  .connection-point::after {
-    content: '';
-    @apply absolute -bottom-0.5 left-0 right-0 h-px bg-water-shallow opacity-0;
-    transition: all 0.6s var(--flow-transition);
-    transform-origin: center;
-    transform: scaleX(0.95);
-  }
-
-  .connection-point:hover::after {
-    @apply opacity-30;
-    transform: scaleX(1);
-  }
-
-  .note-state {
-    @apply transition-all duration-[600ms];
-    transition-timing-function: var(--flow-transition);
-  }
-
+  /* Maturity state styles */
   .note-state-seed {
-    @apply bg-state-seed;
+    @apply bg-accent-primary/5 border-accent-primary/10;
   }
 
   .note-state-sapling {
-    @apply bg-state-sapling;
+    @apply bg-accent-success/5 border-accent-success/10;
   }
 
   .note-state-growth {
-    @apply bg-state-growth;
+    @apply bg-accent-warning/5 border-accent-warning/10;
   }
 
   .note-state-mature {
-    @apply bg-state-mature;
+    @apply bg-accent-primary/10 border-accent-primary/20;
   }
 
   .note-state-evolving {
-    @apply bg-state-evolving;
-  }
-
-  .graph-background {
-    @apply fixed inset-0 opacity-0 pointer-events-none;
-    transition: all 0.8s var(--flow-transition);
-    backdrop-filter: blur(0px);
-  }
-
-  .graph-background.focused {
-    @apply opacity-95 pointer-events-auto;
-    backdrop-filter: blur(3px);
-  }
-
-  .search-bar {
-    @apply w-full max-w-2xl mx-auto px-6 py-3 bg-[var(--background)] border border-water-vapor rounded-lg;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
-    transition: all 0.4s var(--flow-transition);
-  }
-
-  .search-bar:focus-within {
-    @apply border-water-shallow;
-    box-shadow: 0 0 0 2px theme('colors.water.vapor');
-    transform: translateY(-1px);
-  }
-
-  .breadcrumb {
-    @apply flex items-center space-x-2 text-sm text-accent-500 py-4;
-    padding-left: var(--side-margin);
-  }
-
-  .breadcrumb-separator {
-    @apply text-accent-300;
+    @apply bg-accent-error/5 border-accent-error/10;
   }
 }
 
-/* Fluid Animations */
-@keyframes ripple {
-  0% {
-    transform: scale(0.97);
-    opacity: 0.5;
+@layer utilities {
+  /* Custom utilities */
+  .backdrop-blur-xs {
+    backdrop-filter: blur(2px);
   }
-  50% {
-    transform: scale(1.02);
-    opacity: 0.8;
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
 
-@keyframes flow {
-  0% {
-    transform: translateY(8px) scale(0.98);
-    opacity: 0;
+  .backdrop-blur-sm {
+    backdrop-filter: blur(4px);
   }
-  100% {
-    transform: translateY(0) scale(1);
-    opacity: 1;
+
+  .backdrop-blur-md {
+    backdrop-filter: blur(8px);
   }
-}
 
-@keyframes emerge {
-  0% {
-    filter: blur(4px);
-    opacity: 0;
+  /* Scrollbar styles */
+  .scrollbar-hide {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
   }
-  100% {
-    filter: blur(0);
-    opacity: 1;
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
   }
-}
 
-.ripple-enter {
-  animation: ripple 0.8s var(--flow-transition) forwards;
-}
+  /* Typography utilities */
+  .font-feature-default {
+    font-feature-settings:
+      'kern' 1,
+      'liga' 1,
+      'calt' 1;
+  }
 
-.flow-enter {
-  animation: flow 0.6s var(--flow-transition) forwards;
-}
-
-.emerge {
-  animation: emerge 0.8s var(--flow-transition) forwards;
+  .font-feature-numeric {
+    font-feature-settings:
+      'tnum' 1,
+      'calt' 1;
+  }
 }

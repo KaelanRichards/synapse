@@ -63,7 +63,7 @@ export default function Settings() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Loading size="lg" />
+        <Loading />
       </div>
     );
   }
