@@ -6,6 +6,7 @@ export interface Note {
   createdAt: string;
   updatedAt: string;
   userId: string;
+  connections?: Connection[];
 }
 
 export interface Connection {
@@ -35,6 +36,16 @@ export interface User {
   email: string;
   fullName?: string;
   avatarUrl?: string;
+}
+
+export interface VersionHistory {
+  id: string;
+  content: string;
+  versionId: string;
+  versionNumber: number;
+  createdAt: string;
+  timestamp: string;
+  changes: string;
 }
 
 export type MaturityState = Note["maturityState"];

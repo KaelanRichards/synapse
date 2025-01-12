@@ -34,7 +34,7 @@ export default function EmergingClusters({
             noteConnections.push(
               ...note.connections.filter((conn: Connection) =>
                 recentNotes.some(
-                  (n) => n.id === conn.note_from || n.id === conn.note_to
+                  (n) => n.id === conn.noteFrom || n.id === conn.noteTo
                 )
               )
             );

@@ -30,7 +30,7 @@ const nodeTypes = {
         <h3 className="font-medium text-gray-900 truncate">
           {data.note.title}
         </h3>
-        <MaturityBadge state={data.note.maturity_state} />
+        <MaturityBadge state={data.note.maturityState} />
       </div>
       <p className="text-sm text-gray-500 line-clamp-2">{data.note.content}</p>
     </div>
@@ -59,19 +59,19 @@ export default function ClusterView({
   const transformConnectionsToEdges = useCallback((): Edge[] => {
     return connections.map((conn) => ({
       id: conn.id,
-      source: conn.note_from,
-      target: conn.note_to,
+      source: conn.noteFrom,
+      target: conn.noteTo,
       type: "smoothstep",
       animated: conn.emergent,
       markerEnd: {
         type: MarkerType.ArrowClosed,
       },
       style: {
-        stroke: conn.connection_type === "prerequisite" ? "#4F46E5" : "#10B981",
+        stroke: conn.connectionType === "prerequisite" ? "#4F46E5" : "#10B981",
         strokeWidth: conn.strength,
       },
       data: {
-        type: conn.connection_type,
+        type: conn.connectionType,
         strength: conn.strength,
         context: conn.context,
       },

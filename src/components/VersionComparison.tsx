@@ -93,8 +93,8 @@ export default function VersionComparison({
             >
               <div className="flex justify-between items-center mb-2">
                 <div className="text-sm text-gray-600">
-                  Version {version.version_number} •{" "}
-                  {formatDistanceToNow(new Date(version.created_at), {
+                  Version {version.versionNumber} •{" "}
+                  {formatDistanceToNow(new Date(version.createdAt), {
                     addSuffix: true,
                   })}
                 </div>

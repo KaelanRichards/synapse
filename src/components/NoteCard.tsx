@@ -25,7 +25,7 @@ export default function NoteCard({
       <p className="text-gray-600 text-sm mb-3 line-clamp-2">{note.content}</p>
       <div className="flex items-center justify-between text-sm">
         <span className="text-primary-600 font-medium">
-          {note.maturity_state.toLowerCase()}
+          {note.maturityState.toLowerCase()}
         </span>
         {showConnections && note.connections && (
           <span className="text-gray-500">
@@ -42,7 +42,7 @@ export default function NoteCard({
               className="text-xs text-gray-500 flex items-center space-x-1"
             >
               <span className="w-2 h-2 rounded-full bg-primary-200" />
-              <span>{connection.connection_type}</span>
+              <span>{connection.connectionType}</span>
             </div>
           ))}
           {note.connections.length > 3 && (
