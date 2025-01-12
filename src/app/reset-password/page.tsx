@@ -25,10 +25,11 @@ export default function ResetPassword() {
     }
 
     try {
-      const redirectUrl = new URL(
-        "/update-password",
-        process.env.NEXT_PUBLIC_APP_URL
-      ).toString();
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
+      const redirectUrl = `${baseUrl}/update-password`;
+
+      console.log("Reset password redirect URL:", redirectUrl);
+
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: redirectUrl,
       });
@@ -36,6 +37,7 @@ export default function ResetPassword() {
       if (error) throw error;
       setSuccess(true);
     } catch (error) {
+      console.error("Reset password error:", error);
       setError(error instanceof Error ? error.message : "An error occurred");
     } finally {
       setLoading(false);
