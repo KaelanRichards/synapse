@@ -8,6 +8,7 @@
     --foreground: theme('colors.text.light');
     --reading-width: 65ch;
     --side-margin: max(2rem, calc((100vw - var(--reading-width)) / 2));
+    --flow-transition: cubic-bezier(0.2, 0.8, 0.2, 1);
   }
 
   [data-theme='dark'] {
@@ -37,10 +38,16 @@
     max-width: var(--reading-width);
     margin-left: var(--side-margin);
     margin-right: var(--side-margin);
+    transition: opacity 0.6s var(--flow-transition);
   }
 
   .note-content p {
-    @apply mb-6 leading-relaxed text-base;
+    @apply mb-6 leading-relaxed text-base opacity-90;
+    transition: opacity 0.4s var(--flow-transition);
+  }
+
+  .note-content:hover p {
+    @apply opacity-100;
   }
 
   .note-content h1 {
@@ -68,22 +75,27 @@
   .connection-point {
     @apply relative inline;
     text-decoration-thickness: 1px;
-    text-decoration-color: theme('colors.accent.300');
+    text-decoration-color: theme('colors.water.shallow');
     text-underline-offset: 2px;
+    transition: all 0.4s var(--flow-transition);
   }
 
   .connection-point::after {
     content: '';
-    @apply absolute -bottom-0.5 left-0 right-0 h-px bg-accent-300 opacity-0;
-    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    @apply absolute -bottom-0.5 left-0 right-0 h-px bg-water-shallow opacity-0;
+    transition: all 0.6s var(--flow-transition);
+    transform-origin: center;
+    transform: scaleX(0.95);
   }
 
   .connection-point:hover::after {
     @apply opacity-30;
+    transform: scaleX(1);
   }
 
   .note-state {
-    @apply transition-colors duration-[400ms];
+    @apply transition-all duration-[600ms];
+    transition-timing-function: var(--flow-transition);
   }
 
   .note-state-seed {
@@ -107,26 +119,26 @@
   }
 
   .graph-background {
-    @apply fixed inset-0 opacity-5 pointer-events-none;
-    transition:
-      opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-      transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    @apply fixed inset-0 opacity-0 pointer-events-none;
+    transition: all 0.8s var(--flow-transition);
+    backdrop-filter: blur(0px);
   }
 
   .graph-background.focused {
-    @apply opacity-90 pointer-events-auto;
-    backdrop-filter: blur(2px);
+    @apply opacity-95 pointer-events-auto;
+    backdrop-filter: blur(3px);
   }
 
   .search-bar {
-    @apply w-full max-w-2xl mx-auto px-6 py-3 bg-[var(--background)] border border-accent-200 rounded-lg;
+    @apply w-full max-w-2xl mx-auto px-6 py-3 bg-[var(--background)] border border-water-vapor rounded-lg;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.4s var(--flow-transition);
   }
 
   .search-bar:focus-within {
-    @apply border-accent-300;
-    box-shadow: 0 0 0 2px theme('colors.accent.100');
+    @apply border-water-shallow;
+    box-shadow: 0 0 0 2px theme('colors.water.vapor');
+    transform: translateY(-1px);
   }
 
   .breadcrumb {
@@ -139,46 +151,52 @@
   }
 }
 
-/* Animations */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
+/* Fluid Animations */
+@keyframes ripple {
+  0% {
+    transform: scale(0.97);
+    opacity: 0.5;
   }
-  to {
+  50% {
+    transform: scale(1.02);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1);
     opacity: 1;
   }
 }
 
-@keyframes slideIn {
-  from {
-    transform: translateX(-10px);
+@keyframes flow {
+  0% {
+    transform: translateY(8px) scale(0.98);
     opacity: 0;
   }
-  to {
-    transform: translateX(0);
+  100% {
+    transform: translateY(0) scale(1);
     opacity: 1;
   }
 }
 
-@keyframes pageTransition {
-  from {
+@keyframes emerge {
+  0% {
+    filter: blur(4px);
     opacity: 0;
-    transform: translateY(10px);
   }
-  to {
+  100% {
+    filter: blur(0);
     opacity: 1;
-    transform: translateY(0);
   }
 }
 
-.fade-enter {
-  animation: fadeIn 0.4s ease-out forwards;
+.ripple-enter {
+  animation: ripple 0.8s var(--flow-transition) forwards;
 }
 
-.slide-enter {
-  animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+.flow-enter {
+  animation: flow 0.6s var(--flow-transition) forwards;
 }
 
-.page-enter {
-  animation: pageTransition 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+.emerge {
+  animation: emerge 0.8s var(--flow-transition) forwards;
 }

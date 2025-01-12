@@ -4,10 +4,12 @@ import { cn } from '@/lib/utils';
 export interface TextareaProps
   extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   autoResize?: boolean;
+  label?: string;
+  error?: string;
 }
 
 const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
-  ({ className, autoResize, ...props }, ref) => {
+  ({ className, autoResize, label, error, ...props }, ref) => {
     const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
     const handleResize = () => {
@@ -29,28 +31,39 @@ const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
     }, [autoResize]);
 
     return (
-      <textarea
-        className={cn(
-          'flex min-h-[80px] w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm ring-offset-white placeholder:text-neutral-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-50',
-          className
+      <div className="space-y-1.5">
+        {label && (
+          <label className="text-sm font-medium text-mist-black">{label}</label>
         )}
-        ref={element => {
-          // Handle both forwardRef and local ref
-          if (typeof ref === 'function') {
-            ref(element);
-          } else if (ref) {
-            ref.current = element;
-          }
-          textareaRef.current = element;
-        }}
-        onChange={e => {
-          props.onChange?.(e);
-          if (autoResize) {
-            handleResize();
-          }
-        }}
-        {...props}
-      />
+        <textarea
+          className={cn(
+            'flex min-h-[80px] w-full rounded-md border border-garden-thread bg-mist-white px-3 py-2 text-sm text-mist-black shadow-light-mist transition-all duration-medium ease-flow',
+            'ring-offset-mist-white placeholder:text-mist-black/50',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-water-light focus-visible:shadow-deep-well',
+            'disabled:cursor-not-allowed disabled:opacity-50',
+            'resize-none hover:resize-y',
+            error && 'border-error-500 focus-visible:ring-error-500',
+            className
+          )}
+          ref={element => {
+            // Handle both forwardRef and local ref
+            if (typeof ref === 'function') {
+              ref(element);
+            } else if (ref) {
+              ref.current = element;
+            }
+            textareaRef.current = element;
+          }}
+          onChange={e => {
+            props.onChange?.(e);
+            if (autoResize) {
+              handleResize();
+            }
+          }}
+          {...props}
+        />
+        {error && <p className="text-sm text-error-500">{error}</p>}
+      </div>
     );
   }
 );

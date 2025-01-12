@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/router';
 import { useSupabase } from '@/contexts/SupabaseContext';
 import { Input, Textarea, Select, Button, Alert } from '@/components/ui';
+import { cn } from '@/lib/utils';
 
 interface NoteEditorProps {
   initialNote?: {
@@ -88,7 +89,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote, onPreview }) => {
   };
 
   return (
-    <div className="min-h-screen bg-paper-light dark:bg-paper-dark text-text-light dark:text-text-dark">
+    <div className="min-h-screen bg-mist-white dark:bg-mist-black text-mist-black dark:text-mist-white">
       <form onSubmit={handleSubmit} className="note-content">
         <div className="space-y-8">
           <div className="space-y-4">
@@ -98,7 +99,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote, onPreview }) => {
               onChange={e => setNote({ ...note, title: e.target.value })}
               required
               placeholder="Note Title"
-              className="text-2xl font-serif bg-transparent border-0 focus:ring-0 p-0 placeholder-accent-400"
+              className="text-2xl font-serif bg-transparent border-0 focus:ring-0 p-0 placeholder-mist-black/50"
             />
 
             <div className="flex items-center space-x-4">
@@ -109,12 +110,12 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote, onPreview }) => {
                   onChange={e =>
                     setNote({ ...note, maturity_state: e.target.value as any })
                   }
-                  className={`
-                    w-40 bg-transparent border border-accent-200 rounded-md 
-                    text-sm focus:ring-1 focus:ring-accent-300 
-                    transition-shadow duration-medium
-                    note-state-${note.maturity_state.toLowerCase()}
-                  `}
+                  className={cn(
+                    'w-40 bg-transparent border rounded-md text-sm',
+                    'transition-all duration-medium ease-flow',
+                    'focus:ring-1 focus:ring-water-light focus:shadow-deep-well',
+                    `note-state-${note.maturity_state.toLowerCase()}`
+                  )}
                 >
                   {MATURITY_OPTIONS.map(option => (
                     <option key={option.value} value={option.value}>
@@ -122,7 +123,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote, onPreview }) => {
                     </option>
                   ))}
                 </Select>
-                <div className="absolute left-0 w-40 mt-2 py-2 bg-paper-light dark:bg-paper-dark rounded-md shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-medium pointer-events-none">
+                <div className="absolute left-0 w-40 mt-2 py-2 px-3 bg-mist-white dark:bg-mist-black rounded-md shadow-deep-well opacity-0 group-hover:opacity-100 transition-all duration-medium ease-flow pointer-events-none">
                   {
                     MATURITY_OPTIONS.find(
                       opt => opt.value === note.maturity_state
@@ -139,30 +140,30 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote, onPreview }) => {
             onChange={e => setNote({ ...note, content: e.target.value })}
             required
             placeholder="Begin writing..."
-            className="
-              min-h-[70vh] w-full bg-transparent border-0 focus:ring-0 
-              font-serif text-base leading-relaxed placeholder-accent-400
-              resize-none
-            "
+            className={cn(
+              'min-h-[70vh] w-full bg-transparent border-0 focus:ring-0',
+              'font-serif text-base leading-relaxed placeholder-mist-black/50',
+              'resize-none transition-all duration-medium ease-flow'
+            )}
           />
         </div>
 
         {error && (
           <Alert
             variant="error"
-            className="mt-6 bg-error-50 text-error-700 border border-error-200 rounded-lg p-4"
+            className="mt-6 bg-error-50 text-error-700 border border-error-200 rounded-lg p-4 shadow-light-mist"
           >
             {error}
           </Alert>
         )}
 
-        <div className="fixed bottom-0 left-0 right-0 bg-paper-light dark:bg-paper-dark border-t border-accent-200 p-4">
+        <div className="fixed bottom-0 left-0 right-0 bg-mist-white/85 dark:bg-mist-black/85 backdrop-blur-xs border-t border-garden-thread p-4">
           <div className="max-w-3xl mx-auto flex justify-between items-center">
             <Button
               type="button"
               variant="secondary"
               onClick={onPreview}
-              className="text-accent-600 hover:text-accent-700 transition-colors duration-medium"
+              className="text-water-deep hover:text-water-light transition-all duration-medium ease-flow"
             >
               Preview
             </Button>
@@ -170,12 +171,11 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote, onPreview }) => {
               type="submit"
               disabled={isSubmitting}
               variant="primary"
-              className="
-                bg-accent-600 hover:bg-accent-700 text-white
-                px-6 py-2 rounded-lg shadow-sm
-                transition-all duration-medium
-                disabled:opacity-50
-              "
+              className={cn(
+                'px-6 py-2 rounded-lg shadow-light-mist',
+                'transition-all duration-medium ease-flow',
+                'disabled:opacity-50'
+              )}
             >
               {isSubmitting
                 ? 'Saving...'

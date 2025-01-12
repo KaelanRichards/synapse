@@ -1,22 +1,29 @@
 export const colors = {
-  accent: {
-    50: 'rgba(248, 246, 241, 1)',
-    100: 'rgba(241, 237, 227, 1)',
-    200: 'rgba(226, 219, 201, 1)',
-    300: 'rgba(211, 201, 175, 1)',
-    400: 'rgba(196, 183, 149, 1)',
-    500: 'rgba(181, 165, 123, 1)',
-    600: 'rgba(166, 147, 97, 1)',
-    700: 'rgba(151, 129, 71, 1)',
-    800: 'rgba(136, 111, 45, 1)',
-    900: 'rgba(121, 93, 19, 1)',
+  // Natural Elements
+  mist: {
+    white: '#f8fafc',
+    gray: '#f1f5f9',
+    black: '#1f2937',
+  },
+  // Organic Hues
+  garden: {
+    moss: '#d8e3d8',
+    water: '#c3dce3',
+    silk: '#eaeaea',
+  },
+  // Depth & Flow
+  water: {
+    vapor: '#e5f0f3',
+    surface: '#c3dce3',
+    shallow: '#9fc9d6',
+    deep: '#8db3bf',
   },
   paper: {
     light: '#FFFFFF',
     dark: '#1A1A1A',
   },
   text: {
-    light: '#1A1A1A',
+    light: '#1f2937',
     dark: '#FFFFFF',
   },
   error: {
@@ -33,46 +40,50 @@ export const colors = {
 
 export const maturityStateColors = {
   SEED: {
-    bg: 'rgba(167, 201, 167, 0.15)',
-    border: 'rgba(167, 201, 167, 0.3)',
+    bg: 'rgba(229, 240, 243, 0.15)', // vapor-like
+    border: 'rgba(229, 240, 243, 0.3)',
   },
   SAPLING: {
-    bg: 'rgba(179, 157, 219, 0.15)',
-    border: 'rgba(179, 157, 219, 0.3)',
+    bg: 'rgba(195, 220, 227, 0.25)', // surface water
+    border: 'rgba(195, 220, 227, 0.4)',
   },
   GROWTH: {
-    bg: 'rgba(144, 202, 249, 0.15)',
-    border: 'rgba(144, 202, 249, 0.3)',
+    bg: 'rgba(159, 201, 214, 0.35)', // shallow water
+    border: 'rgba(159, 201, 214, 0.5)',
   },
   MATURE: {
-    bg: 'rgba(255, 183, 77, 0.15)',
-    border: 'rgba(255, 183, 77, 0.3)',
+    bg: 'rgba(141, 179, 191, 0.45)', // deep water
+    border: 'rgba(141, 179, 191, 0.6)',
   },
   EVOLVING: {
-    bg: 'rgba(229, 115, 115, 0.15)',
-    border: 'rgba(229, 115, 115, 0.3)',
+    bg: 'rgba(234, 234, 234, 0.15)', // silk-like
+    border: 'rgba(234, 234, 234, 0.3)',
   },
 } as const;
 
 export const connectionColors = {
-  related: { color: '#B9B0A2', animated: false },
-  prerequisite: { color: '#8B7C66', animated: true },
-  refines: { color: '#6F6352', animated: true },
+  related: { color: 'rgba(234, 234, 234, 0.6)', animated: true },
+  prerequisite: { color: 'rgba(195, 220, 227, 0.7)', animated: true },
+  refines: { color: 'rgba(159, 201, 214, 0.8)', animated: true },
 } as const;
 
 export const spacing = {
+  '1.5': '0.375rem',
+  '2.5': '0.625rem',
+  '3.5': '0.875rem',
   xs: '0.25rem',
   sm: '0.5rem',
   md: '1rem',
   lg: '1.5rem',
   xl: '2rem',
   '2xl': '3rem',
+  '15': '3.75rem',
 } as const;
 
 export const typography = {
   fonts: {
     sans: 'Inter, system-ui, -apple-system, sans-serif',
-    serif: 'Bookerly, Georgia, serif',
+    serif: 'Merriweather, Georgia, serif',
   },
   sizes: {
     xs: '0.75rem',
@@ -93,14 +104,25 @@ export const typography = {
   },
 } as const;
 
+export const shadows = {
+  'light-mist': '0 4px 15px rgba(0, 0, 0, 0.04)',
+  'deep-well': '0 10px 30px rgba(0, 0, 0, 0.15)',
+} as const;
+
 export const transitions = {
   duration: {
-    fast: '150ms',
-    medium: '300ms',
-    slow: '500ms',
+    ripple: '600ms',
+    flow: '400ms',
+    gentle: '800ms',
   },
   timing: {
-    ease: 'cubic-bezier(0.4, 0, 0.2, 1)',
-    linear: 'linear',
+    water: 'cubic-bezier(0.4, 0, 0.2, 1)',
+    breeze: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
   },
+} as const;
+
+export const gradients = {
+  mist: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+  water: 'linear-gradient(135deg, #e5f0f3 0%, #9fc9d6 100%)',
+  depth: 'linear-gradient(135deg, #9fc9d6 0%, #8db3bf 100%)',
 } as const;

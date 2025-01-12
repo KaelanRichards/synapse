@@ -10,6 +10,8 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { useNote } from '@/hooks/useNote';
+import { cn } from '@/lib/utils';
+import { maturityStateColors, connectionColors } from '@/theme/tokens';
 
 interface NoteGraphProps {
   noteId: string;
@@ -18,36 +20,6 @@ interface NoteGraphProps {
 }
 
 type ConnectionType = 'related' | 'prerequisite' | 'refines';
-
-const NODE_TYPES = {
-  SEED: {
-    color: 'rgba(167, 201, 167, 0.15)',
-    border: 'rgba(167, 201, 167, 0.3)',
-  },
-  SAPLING: {
-    color: 'rgba(179, 157, 219, 0.15)',
-    border: 'rgba(179, 157, 219, 0.3)',
-  },
-  GROWTH: {
-    color: 'rgba(144, 202, 249, 0.15)',
-    border: 'rgba(144, 202, 249, 0.3)',
-  },
-  MATURE: {
-    color: 'rgba(255, 183, 77, 0.15)',
-    border: 'rgba(255, 183, 77, 0.3)',
-  },
-  EVOLVING: {
-    color: 'rgba(229, 115, 115, 0.15)',
-    border: 'rgba(229, 115, 115, 0.3)',
-  },
-} as const;
-
-const EDGE_TYPES: Record<ConnectionType, { color: string; animated: boolean }> =
-  {
-    related: { color: '#B9B0A2', animated: false },
-    prerequisite: { color: '#8B7C66', animated: true },
-    refines: { color: '#6F6352', animated: true },
-  };
 
 const NoteGraph: React.FC<NoteGraphProps> = ({
   noteId,
@@ -70,15 +42,16 @@ const NoteGraph: React.FC<NoteGraphProps> = ({
         data: { label: data.title },
         position: { x: centerX, y: centerY },
         style: {
-          background: NODE_TYPES[data.maturity_state].color,
-          border: `1px solid ${NODE_TYPES[data.maturity_state].border}`,
-          borderRadius: '4px',
+          background: maturityStateColors[data.maturity_state].bg,
+          border: `1px solid ${maturityStateColors[data.maturity_state].border}`,
+          borderRadius: '8px',
           padding: '12px',
           fontSize: '14px',
-          fontFamily: 'Bookerly, Georgia, serif',
+          fontFamily: 'Merriweather, Georgia, serif',
           width: 180,
           textAlign: 'center' as const,
-          boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
+          boxShadow: '0 4px 15px rgba(0, 0, 0, 0.04)',
+          transition: 'all 300ms cubic-bezier(0.4, 0, 0.2, 1)',
         },
       },
       ...data.connections.map((conn, index) => ({
@@ -89,15 +62,16 @@ const NoteGraph: React.FC<NoteGraphProps> = ({
           y: centerY + radius * Math.sin(index * angleStep),
         },
         style: {
-          background: 'rgba(248, 246, 241, 0.9)',
-          border: `1px solid ${EDGE_TYPES[conn.connection_type as ConnectionType].color}`,
-          borderRadius: '4px',
+          background: 'rgba(248, 250, 252, 0.9)',
+          border: `1px solid ${connectionColors[conn.connection_type as ConnectionType].color}`,
+          borderRadius: '8px',
           padding: '8px',
           fontSize: '12px',
-          fontFamily: 'Bookerly, Georgia, serif',
+          fontFamily: 'Merriweather, Georgia, serif',
           width: 150,
           textAlign: 'center' as const,
-          boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
+          boxShadow: '0 4px 15px rgba(0, 0, 0, 0.04)',
+          transition: 'all 300ms cubic-bezier(0.4, 0, 0.2, 1)',
         },
       })),
     ];
@@ -112,13 +86,16 @@ const NoteGraph: React.FC<NoteGraphProps> = ({
       target: conn.note_to,
       label: conn.connection_type,
       type: 'smoothstep',
-      animated: EDGE_TYPES[conn.connection_type as ConnectionType].animated,
+      animated:
+        connectionColors[conn.connection_type as ConnectionType].animated,
       style: {
-        stroke: EDGE_TYPES[conn.connection_type as ConnectionType].color,
+        stroke: connectionColors[conn.connection_type as ConnectionType].color,
         strokeWidth: 1,
+        opacity: 0.7,
+        transition: 'all 300ms cubic-bezier(0.4, 0, 0.2, 1)',
       },
       labelStyle: {
-        fill: EDGE_TYPES[conn.connection_type as ConnectionType].color,
+        fill: connectionColors[conn.connection_type as ConnectionType].color,
         fontFamily: 'Inter, sans-serif',
         fontSize: 10,
       },
@@ -127,7 +104,7 @@ const NoteGraph: React.FC<NoteGraphProps> = ({
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-[500px] text-accent-400">
+      <div className="flex items-center justify-center h-[500px] text-water-deep animate-pulse">
         Loading knowledge graph...
       </div>
     );
@@ -148,7 +125,11 @@ const NoteGraph: React.FC<NoteGraphProps> = ({
 
   return (
     <div
-      className={`w-full h-[500px] ${isBackground ? 'graph-background' : ''} ${className}`}
+      className={cn(
+        'w-full h-[500px]',
+        isBackground && 'graph-background',
+        className
+      )}
     >
       <ReactFlowProvider>
         <div className="w-full h-full">
@@ -166,29 +147,36 @@ const NoteGraph: React.FC<NoteGraphProps> = ({
             className="bg-transparent"
           >
             <Background
-              color="#A29684"
+              color="#eaeaea"
               style={{ backgroundColor: 'transparent' }}
               size={1.5}
               gap={16}
             />
             <Controls
-              className="bg-paper-light dark:bg-paper-dark border border-accent-200 rounded-lg shadow-sm"
+              className={cn(
+                'bg-mist-white dark:bg-mist-black border border-garden-thread',
+                'rounded-lg shadow-light-mist transition-all duration-medium ease-flow'
+              )}
               style={{ backgroundColor: 'transparent' }}
             />
             {!isBackground && (
               <Panel
                 position="top-right"
-                className="bg-paper-light dark:bg-paper-dark p-2 rounded-lg shadow-sm border border-accent-200"
+                className={cn(
+                  'bg-mist-white dark:bg-mist-black p-3 rounded-lg',
+                  'border border-garden-thread shadow-light-mist',
+                  'transition-all duration-medium ease-flow'
+                )}
               >
-                <div className="text-sm text-accent-600">
-                  <div className="mb-2">Connection Types:</div>
-                  {Object.entries(EDGE_TYPES).map(([type, style]) => (
+                <div className="text-sm text-water-deep">
+                  <div className="mb-2.5">Connection Types:</div>
+                  {Object.entries(connectionColors).map(([type, style]) => (
                     <div
                       key={type}
-                      className="flex items-center space-x-2 mb-1"
+                      className="flex items-center space-x-2.5 mb-1.5"
                     >
                       <div
-                        className="w-4 h-0.5"
+                        className="w-4 h-0.5 rounded-full"
                         style={{ backgroundColor: style.color }}
                       />
                       <span>{type}</span>
