@@ -2,124 +2,114 @@
 
 A knowledge management system that helps you connect and grow your ideas.
 
-## Quick Start with Docker
+## Development Setup
 
-1. Clone the repository:
+You have two options for local development:
+
+### Option 1: Local Development (Recommended for Quick Start)
+
+1. Install the Supabase CLI:
+
+```bash
+npm install -g supabase
+```
+
+2. Clone and setup:
 
 ```bash
 git clone https://github.com/yourusername/synapse.git
 cd synapse
-```
-
-2. Copy the environment file:
-
-```bash
 cp .env.example .env
+npm install
 ```
 
-3. Start the development environment:
+3. Start Supabase locally and run the app:
 
 ```bash
-docker-compose up
+npm run dev:local
 ```
 
 This will start:
 
 - Next.js app on http://localhost:3000
-- Supabase Studio on http://localhost:54321
-- Postgres on port 54322
+- Supabase on http://localhost:54321
 
-## Development
+### Option 2: Docker Development
 
-The development environment uses Docker Compose for easy setup and consistent environments:
-
-- Hot reload is enabled
-- Source files are mounted into the container
-- Node modules are cached in a Docker volume
-- Supabase runs locally for development
-
-### Environment Variables
-
-Required variables in your `.env`:
+If you prefer using Docker:
 
 ```bash
-NEXT_PUBLIC_SUPABASE_URL=http://localhost:54321
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_service_key
-```
-
-### Development Commands
-
-```bash
-# Start development environment
-docker-compose up
-
-# Run tests
-docker-compose exec web npm test
-
-# Reset database
-docker-compose exec web npm run db:reset
-
-# Generate types from database
-docker-compose exec web npm run db:types
+git clone https://github.com/yourusername/synapse.git
+cd synapse
+cp .env.example .env
+npm run dev:docker
 ```
 
 ## Production Deployment
 
-### Deploy with Vercel (Recommended)
+### 1. Deploy Supabase
 
-1. Install Vercel CLI:
-
-```bash
-npm i -g vercel
-```
-
-2. Link your project:
+1. Create a new project at [Supabase](https://supabase.com)
+2. Get your project URL and keys from the project settings
+3. Run migrations on your production database:
 
 ```bash
-vercel link
+supabase link --project-ref your-project-ref
+supabase db push
 ```
 
-3. Add environment variables:
+### 2. Deploy to Vercel
+
+1. Push your code to GitHub
+2. Import your repository in [Vercel](https://vercel.com/new)
+3. Add the following environment variables in Vercel:
+   - `NEXT_PUBLIC_SUPABASE_URL` (from Supabase project settings)
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` (from Supabase project settings)
+   - `SUPABASE_SERVICE_ROLE_KEY` (from Supabase project settings)
+4. Deploy!
+
+## Environment Variables
+
+The `.env` file needs different values for local development vs production:
+
+### Local Development
 
 ```bash
-vercel env add NEXT_PUBLIC_SUPABASE_URL
-vercel env add NEXT_PUBLIC_SUPABASE_ANON_KEY
-vercel env add SUPABASE_SERVICE_ROLE_KEY
+NEXT_PUBLIC_SUPABASE_URL=http://localhost:54321
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_local_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_local_service_key
 ```
 
-4. Deploy:
+### Production
 
 ```bash
-vercel deploy
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_production_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_production_service_role_key
 ```
 
-You can also deploy directly from the [Vercel Dashboard](https://vercel.com/new) by importing your GitHub repository.
-
-### Alternative: Docker Deployment
-
-1. Build the Docker image:
+## Available Commands
 
 ```bash
-docker build -t synapse .
+# Development
+npm run dev           # Run Next.js locally
+npm run dev:local    # Run Next.js + Supabase locally
+npm run dev:docker   # Run everything in Docker
+
+# Database
+npm run db:start     # Start Supabase locally
+npm run db:stop      # Stop Supabase
+npm run db:reset     # Reset local database
+npm run db:push      # Push migrations to production
+npm run db:pull      # Pull remote database schema
+npm run db:generate  # Generate new migration
+
+# Testing & Validation
+npm run test         # Run tests
+npm run lint         # Run linter
+npm run type-check   # Check types
+npm run validate     # Run all checks
 ```
-
-2. Run the container:
-
-```bash
-docker run -p 3000:3000 \
-  -e NEXT_PUBLIC_SUPABASE_URL=your_url \
-  -e NEXT_PUBLIC_SUPABASE_ANON_KEY=your_key \
-  -e SUPABASE_SERVICE_ROLE_KEY=your_service_key \
-  synapse
-```
-
-### Production Considerations
-
-- The production build uses multi-stage builds for smaller image size
-- Node.js runs as a non-root user for security
-- Environment variables must be set at runtime
-- Static files are properly handled by Next.js standalone mode
 
 ## Architecture
 
@@ -131,21 +121,7 @@ docker run -p 3000:3000 \
 
 ## Contributing
 
-1. Start the development environment:
-
-```bash
-docker-compose up
-```
-
-2. Make your changes
-
-3. Run tests:
-
-```bash
-docker-compose exec web npm test
-```
-
-4. Submit a pull request
+See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for development guidelines.
 
 ## License
 
