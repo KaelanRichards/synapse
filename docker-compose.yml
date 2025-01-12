@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  # Development service
+  web-dev:
+    build:
+      context: .
+      target: deps
+    command: npm run dev
+    ports:
+      - '3000:3000'
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    env_file:
+      - .env.local
+    environment:
+      - NODE_ENV=development
+    restart: unless-stopped
+
+  # Production service
+  web-prod:
+    build:
+      context: .
+      target: runner
+    ports:
+      - '3000:3000'
+    env_file:
+      - .env.local
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
