@@ -5,7 +5,7 @@ import type {
   PluginLifecycle,
   Command,
   Decoration,
-  PluginHooks,
+  IPluginHooks,
 } from '../types/plugin';
 import type { Editor, Selection, FormatType } from '../types';
 
@@ -17,13 +17,17 @@ export abstract class BasePlugin<TState = Record<string, unknown>>
   public readonly config: PluginConfig;
   public readonly lifecycle?: PluginLifecycle;
   public state!: TState;
+  public enabled: boolean = true;
   public commands: Command[] = [];
   public decorations: Decoration[] = [];
-  public hooks: {
-    [key: string]: (...args: any[]) => void;
-  } & PluginHooks = {} as any;
+  public hooks: IPluginHooks = {
+    beforeContentChange: undefined,
+    afterContentChange: undefined,
+    beforeFormat: undefined,
+    afterFormat: undefined,
+  };
   public eventBus?: PluginEventBus;
-  protected editor: Editor | null = null;
+  public editor: Editor | null = null;
 
   constructor(config: PluginConfig, lifecycle?: PluginLifecycle) {
     this.id = config.id;
@@ -36,6 +40,18 @@ export abstract class BasePlugin<TState = Record<string, unknown>>
     };
     this.lifecycle = lifecycle;
   }
+
+  public initialize = (): void => {
+    // Implementation can be added by derived classes
+  };
+
+  public enable = (): void => {
+    this.enabled = true;
+  };
+
+  public disable = (): void => {
+    this.enabled = false;
+  };
 
   public setup = (
     editor: Editor,
@@ -135,6 +151,14 @@ export abstract class BasePlugin<TState = Record<string, unknown>>
   }
 
   public afterFormat?(type: FormatType, selection: Selection): void {}
+
+  public getState = (): TState => {
+    return this.state;
+  };
+
+  public setState = (state: Partial<TState>): void => {
+    this.state = { ...this.state, ...state };
+  };
 }
 
 // Helper function to create a plugin config

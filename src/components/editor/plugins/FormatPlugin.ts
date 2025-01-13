@@ -1,6 +1,5 @@
 import { BasePlugin, createPluginConfig } from './BasePlugin';
-import type { Editor, FormatType, Selection } from '../types';
-import type { Command } from '../types/plugin';
+import type { FormatType } from '../types';
 
 interface FormatState extends Record<string, unknown> {
   lastFormat: FormatType | null;

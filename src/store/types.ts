@@ -11,7 +11,7 @@ import type {
 import { WritableDraft } from 'immer';
 
 // Base state interface that all slices will extend
-export interface BaseState {
+export interface IBaseState {
   content: string;
   selection: Selection | null;
   plugins: Map<string, Plugin>;
@@ -35,12 +35,12 @@ export interface BaseState {
 }
 
 // Content slice
-export type ContentState = WritableDraft<{
+export type IContentState = WritableDraft<{
   content: string;
   selection: Selection | null;
 }>;
 
-export interface ContentActions {
+export interface IContentActions {
   setContent: (content: string) => void;
   setSelection: (selection: Selection | null) => void;
   insertText: (text: string, at?: number) => void;
@@ -48,14 +48,14 @@ export interface ContentActions {
   getSelectedText: () => string | null;
 }
 
-export type ContentSlice = ContentState & ContentActions;
+export type ContentSlice = IContentState & IContentActions;
 
 // Format slice
-export type FormatState = WritableDraft<{
+export type IFormatState = WritableDraft<{
   activeFormats: Set<FormatType>;
 }>;
 
-export interface FormatActions {
+export interface IFormatActions {
   format: (type: FormatType, selection: Selection) => void;
   formatText: (params: {
     type: FormatType;
@@ -69,30 +69,30 @@ export interface FormatActions {
   createLink: (url: string) => void;
 }
 
-export type FormatSlice = FormatState & FormatActions;
+export type FormatSlice = IFormatState & IFormatActions;
 
-// Editor UI slice (editor-specific UI state)
-export type UIState = WritableDraft<{
+// Editor UI slice
+export type IUIState = WritableDraft<{
   showToolbar: boolean;
   toolbarPosition: { x: number; y: number };
 }>;
 
-export interface UIActions {
+export interface IUIActions {
   setToolbarPosition: (position: { x: number; y: number }) => void;
   setShowToolbar: (show: boolean) => void;
 }
 
-export type UISlice = UIState & UIActions;
+export type UISlice = IUIState & IUIActions;
 
 // Plugin slice
-export type PluginState = WritableDraft<{
+export type IPluginState = WritableDraft<{
   plugins: Map<string, Plugin>;
   commands: Map<string, Command>;
   decorations: Map<string, Decoration>;
   cleanupFunctions: Map<string, () => void>;
 }>;
 
-export interface PluginActions {
+export interface IPluginActions {
   registerPlugin: (plugin: Plugin) => void;
   unregisterPlugin: (pluginId: string) => void;
   getPlugin: (pluginId: string) => Plugin | undefined;
@@ -117,16 +117,16 @@ export interface PluginActions {
   runAfterFormat: (type: FormatType, selection: Selection) => void;
 }
 
-export type PluginSlice = PluginState & PluginActions;
+export type PluginSlice = IPluginState & IPluginActions;
 
 // History slice
-export type HistoryState = WritableDraft<{
+export type IHistoryState = WritableDraft<{
   undoStack: UndoStackItem[];
   redoStack: UndoStackItem[];
   lastUndoTime: number;
 }>;
 
-export interface HistoryActions {
+export interface IHistoryActions {
   undo: () => void;
   redo: () => void;
   addToUndoStack: (item: UndoStackItem) => void;
@@ -137,10 +137,10 @@ export interface HistoryActions {
   getLastRedoItem: () => UndoStackItem | undefined;
 }
 
-export type HistorySlice = HistoryState & HistoryActions;
+export type HistorySlice = IHistoryState & IHistoryActions;
 
 // Core editor actions
-export interface EditorActions {
+export interface IEditorActions {
   initialize: () => void;
   destroy: () => void;
   setContent: (content: string) => void;
@@ -164,11 +164,11 @@ export interface EditorActions {
 
 // Complete editor store type
 export type EditorStore = WritableDraft<
-  BaseState &
+  IBaseState &
     ContentSlice &
     FormatSlice &
     UISlice &
     PluginSlice &
     HistorySlice &
-    EditorActions
+    IEditorActions
 >;

@@ -1,13 +1,13 @@
 import type { Editor } from '../types';
 import type {
-  Plugin,
-  PluginEventBus,
+  IPlugin,
+  IPluginEventBus,
   PluginEventHandler,
 } from '../types/plugin';
 
 export class PluginManager {
-  private plugins: Map<string, Plugin> = new Map();
-  eventBus: PluginEventBus;
+  private plugins: Map<string, IPlugin> = new Map();
+  eventBus: IPluginEventBus;
   private editor: Editor;
   private eventHandlers: Map<string, Set<PluginEventHandler>>;
 
@@ -21,11 +21,9 @@ export class PluginManager {
     };
   }
 
-  register(plugin: Plugin): void {
-    if (this.plugins.has(plugin.config.id)) {
-      throw new Error(
-        `Plugin with id ${plugin.config.id} is already registered`
-      );
+  register(plugin: IPlugin): void {
+    if (this.plugins.has(plugin.id)) {
+      throw new Error(`Plugin with id ${plugin.id} is already registered`);
     }
 
     // Initialize plugin with event bus
@@ -38,7 +36,7 @@ export class PluginManager {
       plugin.lifecycle.onMount(this.editor);
     }
 
-    this.plugins.set(plugin.config.id, plugin);
+    this.plugins.set(plugin.id, plugin);
   }
 
   unregister(pluginId: string): void {
@@ -61,14 +59,14 @@ export class PluginManager {
   enable(pluginId: string): void {
     const plugin = this.plugins.get(pluginId);
     if (plugin) {
-      plugin.config.enabled = true;
+      plugin.enabled = true;
     }
   }
 
   disable(pluginId: string): void {
     const plugin = this.plugins.get(pluginId);
     if (plugin) {
-      plugin.config.enabled = false;
+      plugin.enabled = false;
     }
   }
 
@@ -86,8 +84,8 @@ export class PluginManager {
       visited.add(pluginId);
       const plugin = this.plugins.get(pluginId);
 
-      if (plugin?.config.dependencies) {
-        for (const depId of plugin.config.dependencies) {
+      if (plugin?.dependencies) {
+        for (const depId of plugin.dependencies) {
           if (!this.plugins.has(depId)) {
             throw new Error(
               `Missing dependency: ${depId} for plugin: ${pluginId}`
@@ -108,7 +106,7 @@ export class PluginManager {
     loadOrder.sort((a, b) => {
       const pluginA = this.plugins.get(a);
       const pluginB = this.plugins.get(b);
-      return (pluginB?.config.priority || 0) - (pluginA?.config.priority || 0);
+      return (pluginB?.priority || 0) - (pluginA?.priority || 0);
     });
   }
 
@@ -126,8 +124,8 @@ export class PluginManager {
       visited.add(pluginId);
       const plugin = this.plugins.get(pluginId);
 
-      if (plugin?.config.dependencies) {
-        for (const depId of plugin.config.dependencies) {
+      if (plugin?.dependencies) {
+        for (const depId of plugin.dependencies) {
           visit(depId);
         }
       }

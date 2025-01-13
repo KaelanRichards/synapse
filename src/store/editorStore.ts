@@ -190,11 +190,11 @@ const useEditorStore = create<EditorStore>()(
           emit: (event: string, ...args: any[]) => {
             plugin.hooks?.[event]?.(...args);
           },
-          on: (event: string, handler: any) => {
+          on: (event: string, handler: (...args: any[]) => void) => {
             if (!plugin.hooks) plugin.hooks = {};
             plugin.hooks[event] = handler;
           },
-          off: (event: string, handler: any) => {
+          off: (event: string, handler: (...args: any[]) => void) => {
             if (plugin.hooks?.[event] === handler) {
               delete plugin.hooks[event];
             }

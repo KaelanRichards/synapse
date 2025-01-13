@@ -1,19 +1,25 @@
 import type { Editor, Selection, FormatType } from '../types';
 
-// Plugin Configuration
-export interface PluginConfig {
+// Plugin Configuration Interface
+export interface IPluginConfig {
   id: string;
   name: string;
-  version: string;
+  description?: string;
+  version?: string;
+  author?: string;
   dependencies?: string[];
-  priority?: number;
   enabled?: boolean;
+  priority?: number;
   options?: Record<string, unknown>;
 }
 
-// Plugin Lifecycle Hooks
-export interface PluginLifecycle {
-  onMount?: (editor: Editor) => void | (() => void);
+// Plugin Lifecycle Interface
+export interface IPluginLifecycle {
+  onInit?: () => void;
+  onDestroy?: () => void;
+  onEnable?: () => void;
+  onDisable?: () => void;
+  onMount?: (editor: Editor) => void;
   onUnmount?: () => void;
   onChange?: (content: string, prevContent: string) => void;
   onSelectionChange?: (selection: Selection | null) => void;
@@ -21,82 +27,90 @@ export interface PluginLifecycle {
   onBlur?: () => void;
 }
 
-// Plugin Event System
 export type PluginEventHandler = (...args: any[]) => void;
 
-export interface PluginEventBus {
-  emit: (event: string, ...args: any[]) => void;
+export interface IPluginEventBus {
   on: (event: string, handler: PluginEventHandler) => void;
   off: (event: string, handler: PluginEventHandler) => void;
+  emit: (event: string, ...args: any[]) => void;
 }
 
 // Base Plugin Interface
-export interface Plugin<TState = Record<string, unknown>> {
-  config: PluginConfig;
-  lifecycle?: PluginLifecycle;
-  state: TState;
-  commands?: Command[];
-  decorations?: Decoration[];
-  eventBus?: PluginEventBus;
+export interface IPlugin<TState = Record<string, unknown>> {
   id: string;
   name: string;
-  hooks: {
-    [key: string]: (...args: any[]) => void;
-  } & PluginHooks;
-  beforeContentChange?: (content: string) => string;
-  afterContentChange?: (content: string) => void;
+  description?: string;
+  version?: string;
+  state: TState;
+  editor: Editor | null;
+  hooks: IPluginHooks;
+  commands: ICommand[];
+  decorations: IDecoration[];
+  enabled: boolean;
+  priority?: number;
+  dependencies?: string[];
+  lifecycle?: IPluginLifecycle;
+  init?: (editor: Editor, eventBus: IPluginEventBus) => void;
+  initialize: () => void;
+  destroy: () => void;
+  enable: () => void;
+  disable: () => void;
   beforeFormat?: (type: FormatType, selection: Selection) => boolean;
   afterFormat?: (type: FormatType, selection: Selection) => void;
-  setup?: (editor: Editor, eventBus: PluginEventBus) => void | (() => void);
-  init?: (editor: Editor, eventBus: PluginEventBus) => void | (() => void);
-  destroy?: () => void;
-  getCommands?: (editor: Editor) => Command[];
+  getState: () => TState;
+  setState: (state: Partial<TState>) => void;
+  getCommands: (editor: Editor) => ICommand[];
+  setup?: (editor: Editor, eventBus: IPluginEventBus) => void | (() => void);
 }
 
 // Plugin Manager Interface
-export interface PluginManager {
-  plugins: Map<string, Plugin>;
-  eventBus: PluginEventBus;
-
-  // Plugin lifecycle management
-  register: (plugin: Plugin) => void;
-  unregister: (pluginId: string) => void;
-  enable: (pluginId: string) => void;
-  disable: (pluginId: string) => void;
-
-  // Plugin dependencies
-  resolveDependencies: () => void;
-  getLoadOrder: () => string[];
-
-  // Event management
-  emit: (event: string, ...args: any[]) => void;
-  on: (event: string, handler: PluginEventHandler) => void;
-  off: (event: string, handler: PluginEventHandler) => void;
+export interface IPluginManager {
+  plugins: Map<string, IPlugin>;
+  registerPlugin: (plugin: IPlugin) => void;
+  unregisterPlugin: (pluginId: string) => void;
+  getPlugin: <T extends IPlugin>(pluginId: string) => T | undefined;
+  enablePlugin: (pluginId: string) => void;
+  disablePlugin: (pluginId: string) => void;
+  isPluginEnabled: (pluginId: string) => boolean;
+  getPluginState: <T>(pluginId: string) => T | undefined;
+  setPluginState: <T>(pluginId: string, state: T) => void;
 }
 
 // Plugin Command Interface
-export interface Command {
+export interface ICommand {
   id: string;
   name: string;
   description?: string;
   shortcut?: string;
+  enabled?: boolean;
   category?: string;
   isEnabled?: () => boolean;
   execute: (...args: any[]) => void;
 }
 
 // Plugin Decoration Interface
-export interface Decoration {
+export interface IDecoration {
   id: string;
   type: 'inline' | 'block';
-  range: Selection;
-  attributes: Record<string, string>;
-  className?: string;
+  pattern: RegExp | string;
+  render: (match: RegExpMatchArray) => string;
+  priority?: number;
 }
 
-export interface PluginHooks {
-  beforeContentChange?: (content: string) => string;
+export interface IPluginHooks {
+  beforeContentChange?: (content: string) => string | void;
   afterContentChange?: (content: string) => void;
   beforeFormat?: (type: FormatType, selection: Selection) => boolean;
   afterFormat?: (type: FormatType, selection: Selection) => void;
+  [key: string]: ((...args: any[]) => any) | undefined;
 }
+
+// Type aliases for backward compatibility
+export type Plugin<TState = Record<string, unknown>> = IPlugin<TState>;
+export type PluginConfig = IPluginConfig;
+export type PluginLifecycle = IPluginLifecycle;
+export type PluginEventBus = IPluginEventBus;
+export type PluginManager = IPluginManager;
+export type Command = ICommand;
+export type Decoration = IDecoration;
+export type PluginHooks = IPluginHooks;

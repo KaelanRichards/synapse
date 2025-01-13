@@ -2,7 +2,7 @@ import { StateCreator } from 'zustand';
 import type { EditorState, UndoStackItem } from '../../components/editor/types';
 import type {
   ContentSlice,
-  EditorActions,
+  IEditorActions,
   FormatSlice,
   UISlice,
   PluginSlice,
@@ -32,7 +32,7 @@ export type EditorStore = EditorState &
   UISlice &
   PluginSlice &
   HistorySlice &
-  EditorActions;
+  IEditorActions;
 
 const MAX_UNDO_STACK_SIZE = 100;
 const MERGE_THRESHOLD = 1000; // 1 second in milliseconds
@@ -55,7 +55,7 @@ export const createHistorySlice: StateCreator<
     const currentState = undoStack[undoStack.length - 1];
     const previousState = undoStack[undoStack.length - 2];
 
-    set(state => {
+    set((state: EditorStore) => {
       // Update content and selection
       state.content = previousState.content;
       state.selection = previousState.selection;
@@ -85,12 +85,10 @@ export const createHistorySlice: StateCreator<
 
   redo: () => {
     const { redoStack } = get();
-
     if (redoStack.length === 0) return;
-
     const nextState = redoStack[redoStack.length - 1];
 
-    set(state => {
+    set((state: EditorStore) => {
       // Update content and selection
       state.content = nextState.content;
       state.selection = nextState.selection;
@@ -119,7 +117,7 @@ export const createHistorySlice: StateCreator<
   },
 
   addToUndoStack: (item: UndoStackItem) => {
-    set(state => {
+    set((state: EditorStore) => {
       const now = Date.now();
       const lastItem = state.undoStack[state.undoStack.length - 1];
 
@@ -149,7 +147,7 @@ export const createHistorySlice: StateCreator<
   },
 
   clearHistory: () =>
-    set(state => {
+    set((state: EditorStore) => {
       state.undoStack = [];
       state.redoStack = [];
       state.lastUndoTime = 0;
