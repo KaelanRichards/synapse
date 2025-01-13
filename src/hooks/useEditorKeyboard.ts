@@ -55,10 +55,6 @@ export function useEditorKeyboard() {
               executeCommand('undo');
             }
             break;
-          case '/':
-            e.preventDefault();
-            executeCommand('toggle-search');
-            break;
         }
       }
     },

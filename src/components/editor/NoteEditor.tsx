@@ -3,27 +3,28 @@ import { useNoteMutations } from '@/hooks/useNoteMutations';
 import { useSupabase } from '@/contexts/SupabaseContext';
 import { useRouter } from 'next/router';
 import { EditorToolbar } from './EditorToolbar';
-import { SearchReplaceToolbar } from './SearchReplaceToolbar';
 import { EditorContainer } from './EditorContainer';
 import AmbientSoundPlayer from '../AmbientSoundPlayer';
 import type {
+  Plugin,
   Selection,
   NoteEditorProps,
-  SearchReplacePluginState,
+  Command,
+  Decoration,
+  UndoStackItem,
 } from './types';
 import { KeyboardShortcutsPanel } from './KeyboardShortcutsPanel';
-import { SearchReplacePlugin } from './plugins/SearchReplacePlugin';
 import { AutosavePlugin } from './plugins/AutosavePlugin';
 import { FormatPlugin } from '@/components/editor/plugins/FormatPlugin';
-import { MarkdownPlugin } from '@/components/editor/plugins/MarkdownPlugin';
+import { MarkdownPlugin } from './plugins/MarkdownPlugin';
 import useEditorStore from '@/store/editorStore';
+import { FloatingFormatToolbar } from './FloatingFormatToolbar';
 import { EditorErrorBoundary, ToolbarErrorBoundary } from './ErrorBoundary';
 
 const SAVE_DELAY = 1000;
 
 // Initialize plugins
 const defaultPlugins = [
-  new SearchReplacePlugin(),
   new AutosavePlugin(),
   new FormatPlugin(),
   new MarkdownPlugin(),
@@ -40,16 +41,18 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
   const {
     content,
     selection,
+    plugins,
+    commands,
+    decorations,
     stats,
     saveStatus,
     isLocalFocusMode,
     isParagraphFocus,
     isAmbientSound,
     showToolbar,
-    toolbarPosition,
+    focusMode,
     typewriterMode,
-    commands,
-    plugins,
+    toolbarPosition,
     setContent,
     setSelection,
     toggleFocusMode,
@@ -63,83 +66,38 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
     undo,
     redo,
     handleKeyDown,
-    handlePaste,
-    handleDrop,
   } = useEditorStore();
-
-  // Get plugin states
-  const searchReplaceState = plugins.get('search-replace')?.state as
-    | SearchReplacePluginState
-    | undefined;
 
   // Initialize editor with plugins
   useEffect(() => {
-    initialize();
     if (initialNote?.content) {
+      initialize();
       setContent(initialNote.content);
     }
-    defaultPlugins.forEach(plugin => {
-      useEditorStore.getState().registerPlugin(plugin);
-    });
     return () => {
       destroy();
     };
-  }, [initialize, destroy, setContent, initialNote]);
+  }, [destroy, initialize, initialNote?.content, setContent]);
 
   // Handle keyboard shortcuts
   const handleKeyboardShortcuts = useCallback(
-    (event: KeyboardEvent) => {
-      const { key, ctrlKey, metaKey, shiftKey } = event;
-
-      if (ctrlKey || metaKey) {
-        switch (key.toLowerCase()) {
-          case 'z':
-            if (shiftKey) {
-              event.preventDefault();
-              redo();
-            } else {
-              event.preventDefault();
-              undo();
-            }
-            break;
-
-          case 'k':
-            event.preventDefault();
-            setShowKeyboardShortcuts(prev => !prev);
-            break;
-
-          case 'f':
-            event.preventDefault();
-            if (searchReplaceState) {
-              const command = commands.get('toggle-search');
-              if (command) command.execute();
-            }
-            break;
-
-          case 't':
-            event.preventDefault();
-            toggleTypewriterMode();
-            break;
-
-          case 'p':
-            event.preventDefault();
-            toggleParagraphFocus();
-            break;
-
-          default:
-            handleKeyDown(event);
+    (e: KeyboardEvent) => {
+      if (e.key === 'z' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        if (e.shiftKey) {
+          redo();
+        } else {
+          undo();
         }
+      } else if (e.key === 'b' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        toggleTypewriterMode();
+      } else if (e.key === 'p' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        toggleParagraphFocus();
       }
     },
-    [
-      handleKeyDown,
-      undo,
-      redo,
-      commands,
-      searchReplaceState,
-      toggleTypewriterMode,
-      toggleParagraphFocus,
-    ]
+    [redo, toggleParagraphFocus, toggleTypewriterMode, undo]
   );
 
   // Add keyboard event listeners
@@ -276,6 +234,10 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
     });
   };
 
+  if (content !== initialNote?.content) {
+    setContent(initialNote?.content || '');
+  }
+
   return (
     <EditorErrorBoundary
       onError={handleEditorError}
@@ -309,50 +271,6 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
           onSelectionChange={handleSelectionChange}
         />
 
-        {searchReplaceState?.isOpen && (
-          <SearchReplaceToolbar
-            isOpen={searchReplaceState.isOpen}
-            searchTerm={searchReplaceState.searchTerm}
-            replaceTerm={searchReplaceState.replaceTerm}
-            matchCount={searchReplaceState.matches.length}
-            currentMatch={searchReplaceState.currentMatch}
-            caseSensitive={searchReplaceState.caseSensitive}
-            useRegex={searchReplaceState.useRegex}
-            onClose={() => textareaRef.current?.focus()}
-            onSearchChange={term => {
-              const command = commands.get('setSearchTerm');
-              if (command) command.execute(term);
-            }}
-            onReplaceChange={term => {
-              const command = commands.get('setReplaceTerm');
-              if (command) command.execute(term);
-            }}
-            onFindNext={() => {
-              const command = commands.get('find-next');
-              if (command) command.execute();
-            }}
-            onFindPrevious={() => {
-              const command = commands.get('find-previous');
-              if (command) command.execute();
-            }}
-            onReplace={() => {
-              const command = commands.get('replace');
-              if (command) command.execute();
-            }}
-            onReplaceAll={() => {
-              const command = commands.get('replace-all');
-              if (command) command.execute();
-            }}
-            onToggleCaseSensitive={() => {
-              const command = commands.get('toggle-case-sensitive');
-              if (command) command.execute();
-            }}
-            onToggleRegex={() => {
-              const command = commands.get('toggle-regex');
-              if (command) command.execute();
-            }}
-          />
-        )}
         {showKeyboardShortcuts && (
           <KeyboardShortcutsPanel
             isOpen={showKeyboardShortcuts}
