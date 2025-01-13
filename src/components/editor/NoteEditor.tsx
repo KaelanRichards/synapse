@@ -33,18 +33,12 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
     commands,
     stats,
     saveStatus,
-    isLocalFocusMode,
-    isParagraphFocus,
     isAmbientSound,
     showToolbar,
-    typewriterMode,
     toolbarPosition,
     setContent,
     setSelection,
-    toggleFocusMode,
-    toggleParagraphFocus,
     toggleAmbientSound,
-    toggleTypewriterMode,
     setToolbarPosition,
     setShowToolbar,
     initialize,
@@ -74,15 +68,9 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
         } else {
           undo();
         }
-      } else if (e.key === 'b' && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        toggleTypewriterMode();
-      } else if (e.key === 'p' && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        toggleParagraphFocus();
       }
     },
-    [redo, toggleParagraphFocus, toggleTypewriterMode, undo]
+    [redo, undo]
   );
 
   // Add keyboard event listeners
@@ -233,14 +221,8 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
           <EditorToolbar
             stats={stats}
             saveStatus={saveStatus}
-            isLocalFocusMode={isLocalFocusMode}
-            isParagraphFocus={isParagraphFocus}
             isAmbientSound={isAmbientSound}
-            isTypewriterMode={typewriterMode.enabled}
-            onToggleFocusMode={toggleFocusMode}
-            onToggleParagraphFocus={toggleParagraphFocus}
             onToggleAmbientSound={toggleAmbientSound}
-            onToggleTypewriterMode={toggleTypewriterMode}
           />
         </ToolbarErrorBoundary>
 
@@ -249,8 +231,6 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
           showToolbar={showToolbar}
           toolbarPosition={toolbarPosition}
           commands={commands}
-          isLocalFocusMode={isLocalFocusMode}
-          isParagraphFocus={isParagraphFocus}
           textareaRef={textareaRef}
           onContentChange={handleContentChange}
           onSelectionChange={handleSelectionChange}
