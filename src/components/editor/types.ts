@@ -45,7 +45,7 @@ export interface Command {
   shortcut?: string;
   category?: string;
   isEnabled?: () => boolean;
-  execute: () => void;
+  execute: (...args: any[]) => void;
 }
 
 // Decoration System Types

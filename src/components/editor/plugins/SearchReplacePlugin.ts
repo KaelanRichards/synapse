@@ -211,6 +211,32 @@ export const SearchReplacePlugin = createPlugin<SearchReplaceState>({
       },
     });
 
+    editor.registerCommand({
+      id: 'setSearchTerm',
+      name: 'Set Search Term',
+      category: 'Search',
+      execute: (term: string) => {
+        const matches = findMatches(term);
+        updateState({
+          searchTerm: term,
+          matches,
+          currentMatch: matches.length > 0 ? 0 : -1,
+        });
+        if (matches.length > 0) {
+          selectMatch(0);
+        }
+      },
+    });
+
+    editor.registerCommand({
+      id: 'setReplaceTerm',
+      name: 'Set Replace Term',
+      category: 'Search',
+      execute: (term: string) => {
+        updateState({ replaceTerm: term });
+      },
+    });
+
     // Return cleanup function
     return () => {
       pluginState = {
