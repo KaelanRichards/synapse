@@ -10,19 +10,6 @@ CREATE TABLE IF NOT EXISTS notes (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Table: connections
-CREATE TABLE IF NOT EXISTS connections (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    note_from UUID REFERENCES notes(id) ON DELETE CASCADE,
-    note_to UUID REFERENCES notes(id) ON DELETE CASCADE,
-    connection_type TEXT CHECK (connection_type IN ('related', 'prerequisite', 'refines')),
-    strength FLOAT CHECK (strength >= 0 AND strength <= 10) DEFAULT 1.0,
-    bidirectional BOOLEAN DEFAULT FALSE,
-    context TEXT,
-    emergent BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
 -- Table: note_versions
 CREATE TABLE IF NOT EXISTS note_versions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -34,8 +21,6 @@ CREATE TABLE IF NOT EXISTS note_versions (
 
 -- Create indexes for better query performance
 CREATE INDEX IF NOT EXISTS idx_notes_title ON notes(title);
-CREATE INDEX IF NOT EXISTS idx_connections_note_from ON connections(note_from);
-CREATE INDEX IF NOT EXISTS idx_connections_note_to ON connections(note_to);
 CREATE INDEX IF NOT EXISTS idx_note_versions_note_id ON note_versions(note_id);
 
 -- Create function to update updated_at timestamp

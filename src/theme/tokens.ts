@@ -47,12 +47,6 @@ export const maturityStateColors = {
   },
 } as const;
 
-export const connectionColors = {
-  related: { color: 'rgba(156, 163, 175, 0.3)', animated: true },
-  prerequisite: { color: 'rgba(59, 130, 246, 0.3)', animated: true },
-  refines: { color: 'rgba(16, 185, 129, 0.3)', animated: true },
-} as const;
-
 export const spacing = {
   '2xs': '0.25rem',
   xs: '0.5rem',

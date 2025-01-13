@@ -7,20 +7,6 @@ export interface Note {
   updated_at: string;
 }
 
-export type ConnectionType = 'related' | 'prerequisite' | 'refines';
-
-export interface Connection {
-  id: string;
-  note_from: string;
-  note_to: string;
-  connection_type: ConnectionType;
-  strength: number;
-  bidirectional: boolean;
-  context: string | null;
-  emergent: boolean;
-  created_at: string;
-}
-
 export interface NoteVersion {
   id: string;
   note_id: string;
@@ -36,11 +22,6 @@ export interface Database {
         Row: Note;
         Insert: Partial<Note>;
         Update: Partial<Note>;
-      };
-      connections: {
-        Row: Connection;
-        Insert: Partial<Connection>;
-        Update: Partial<Connection>;
       };
       note_versions: {
         Row: NoteVersion;
