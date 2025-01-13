@@ -114,10 +114,19 @@ export const NoteItem = React.memo(
     onTogglePin?: (noteId: string) => void;
     isDragging?: boolean;
   }) => {
+    const router = useRouter();
     const truncatedContent =
       note.content.length > 120
         ? note.content.slice(0, 120) + '...'
         : note.content;
+
+    const handleClick = (e: React.MouseEvent) => {
+      if (isDragging) {
+        e.preventDefault();
+        return;
+      }
+      router.push(`/notes/${note.id}`);
+    };
 
     return (
       <div
@@ -129,7 +138,7 @@ export const NoteItem = React.memo(
           isDragging && 'shadow-lg'
         )}
       >
-        <Link href={`/notes/${note.id}`} className="block p-2">
+        <a onClick={handleClick} className="block p-2">
           <div className="flex items-center justify-between">
             <div className="flex-1">
               <h3 className="font-medium text-sm text-ink-rich dark:text-ink-inverse line-clamp-1">
@@ -160,7 +169,7 @@ export const NoteItem = React.memo(
               </button>
             )}
           </div>
-        </Link>
+        </a>
       </div>
     );
   }
@@ -194,17 +203,25 @@ export const SortableNoteItem = React.memo(
       <div
         ref={setNodeRef}
         style={style}
-        {...attributes}
         className={cn(
-          'transition-shadow duration-200',
+          'transition-shadow duration-200 relative',
           isDragging && 'shadow-lg'
         )}
       >
         <div
+          {...attributes}
           {...listeners}
-          className="cursor-grab active:cursor-grabbing"
-          data-no-dnd="true"
+          className="absolute left-0 inset-y-0 w-8 cursor-grab active:cursor-grabbing flex items-center justify-center opacity-0 group-hover:opacity-100"
         >
+          <svg
+            className="w-4 h-4 text-gray-400"
+            viewBox="0 0 16 16"
+            fill="currentColor"
+          >
+            <path d="M4 4a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm0 5.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm0 5.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm8-11a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm0 5.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm0 5.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z" />
+          </svg>
+        </div>
+        <div className="pl-8">
           <NoteItem
             note={note}
             onTogglePin={onTogglePin}
