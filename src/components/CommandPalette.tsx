@@ -1,254 +1,150 @@
 import React, { useState, useEffect } from 'react';
 import { Command } from 'cmdk';
-import * as Dialog from '@radix-ui/react-dialog';
-import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { useRouter } from 'next/router';
-import { cn } from '@/lib/utils';
 import { useEditor } from '@/contexts/EditorContext';
-import { useNoteMutations } from '@/hooks/useNoteMutations';
+import { useNoteList } from '@/hooks/useNoteList';
+import { cn } from '@/lib/utils';
+import {
+  DocumentIcon,
+  MagnifyingGlassIcon,
+  SunIcon,
+  MoonIcon,
+  ComputerDesktopIcon,
+  AdjustmentsHorizontalIcon,
+  ClockIcon,
+} from '@heroicons/react/24/outline';
 
-interface CommandPaletteProps {
-  isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
-  currentNote?: {
-    id?: string;
-    title: string;
-    content: string;
-  };
-}
-
-const CommandPalette: React.FC<CommandPaletteProps> = ({
-  isOpen,
-  onOpenChange,
-  currentNote,
-}) => {
+export function CommandPalette() {
+  const [open, setOpen] = useState(false);
   const router = useRouter();
-  const [search, setSearch] = useState('');
-  const [recentNotes, setRecentNotes] = useState<any[]>([]);
-  const { setMode, toggleAutoSave, state } = useEditor();
-  const { updateNote } = useNoteMutations();
+  const { notes } = useNoteList();
+  const {
+    state,
+    setTheme,
+    setFontFamily,
+    setFontSize,
+    setFocusMode,
+    setTypewriterMode,
+  } = useEditor();
 
+  // Toggle the menu when ⌘K is pressed
   useEffect(() => {
-    if (isOpen) {
-      setSearch('');
-    }
-  }, [isOpen]);
-
-  const handleSelect = async (action: string) => {
-    switch (action) {
-      case 'new':
-        router.push('/notes/new');
-        break;
-      case 'all':
-        router.push('/notes');
-        break;
-      case 'graph':
-        router.push('/graph');
-        break;
-      case 'settings':
-        router.push('/settings');
-        break;
-      case 'save':
-        if (currentNote?.id) {
-          updateNote.mutate({
-            id: currentNote.id,
-            content: currentNote.content,
-          });
-        }
-        break;
-      case 'autosave':
-        toggleAutoSave();
-        break;
-      case 'focus':
-        setMode('focus');
-        break;
-      case 'fullscreen':
-        document.documentElement.requestFullscreen();
-        break;
-    }
-    onOpenChange(false);
-  };
+    const down = (e: KeyboardEvent) => {
+      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        setOpen(open => !open);
+      }
+    };
+    document.addEventListener('keydown', down);
+    return () => document.removeEventListener('keydown', down);
+  }, []);
 
   return (
-    <Dialog.Root open={isOpen} onOpenChange={onOpenChange}>
-      <Dialog.Portal>
-        <Dialog.Overlay
+    <Command.Dialog
+      open={open}
+      onOpenChange={setOpen}
+      className={cn(
+        'fixed inset-0 z-50 overflow-hidden p-6 pt-[20vh]',
+        'bg-surface-pure/80 backdrop-blur-sm dark:bg-surface-dark/80'
+      )}
+    >
+      <div className="relative max-w-2xl mx-auto">
+        <Command.Input
+          placeholder="Type a command or search..."
           className={cn(
-            'fixed inset-0 bg-ink-rich/10 dark:bg-ink-pure/20 backdrop-blur-sm',
-            'transition-opacity duration-normal ease-gentle'
+            'w-full px-4 py-3 text-base',
+            'bg-surface-pure dark:bg-surface-dark',
+            'border border-ink-faint/20 rounded-lg',
+            'focus:outline-none focus:ring-2 focus:ring-accent-primary',
+            'placeholder:text-ink-muted dark:placeholder:text-ink-muted/70'
           )}
         />
-        <Dialog.Content
-          className={cn(
-            'fixed inset-x-0 top-[20vh] mx-auto max-w-xl rounded-lg',
-            'bg-surface-pure dark:bg-surface-dark',
-            'shadow-command dark:shadow-command/20 border border-ink-faint/10',
-            'transition-all duration-normal ease-gentle'
-          )}
-        >
-          <Dialog.Title asChild>
-            <VisuallyHidden>Command Menu</VisuallyHidden>
-          </Dialog.Title>
-          <Dialog.Description asChild>
-            <VisuallyHidden>
-              Search and execute commands or navigate to different views
-            </VisuallyHidden>
-          </Dialog.Description>
 
-          <Command>
-            <Command.Input
-              placeholder="Type a command or search..."
-              value={search}
-              onValueChange={setSearch}
-              className={cn(
-                'w-full p-4 text-lg',
-                'bg-transparent border-b border-ink-faint/10',
-                'focus:outline-none',
-                'text-ink-rich dark:text-ink-inverse',
-                'placeholder:text-ink-faint/50 dark:placeholder:text-ink-faint/30'
-              )}
-            />
-            <Command.List className="max-h-[60vh] overflow-y-auto p-2">
-              <Command.Empty className="p-4 text-center text-ink-faint dark:text-ink-faint/50">
-                No results found.
-              </Command.Empty>
-
-              {/* Quick Actions */}
-              <Command.Group heading="Quick Actions">
-                <Command.Item
-                  onSelect={() => handleSelect('new')}
-                  className={cn(
-                    'p-2 cursor-pointer',
-                    'text-ink-rich dark:text-ink-inverse',
-                    'hover:bg-surface-faint dark:hover:bg-surface-dim/10'
-                  )}
-                >
-                  Create New Note
-                </Command.Item>
-                {currentNote && (
-                  <>
-                    <Command.Item
-                      onSelect={() => handleSelect('save')}
-                      className={cn(
-                        'p-2 cursor-pointer',
-                        'text-ink-rich dark:text-ink-inverse',
-                        'hover:bg-surface-faint dark:hover:bg-surface-dim/10'
-                      )}
-                    >
-                      Save Note (⌘S)
-                    </Command.Item>
-                    <Command.Item
-                      onSelect={() => handleSelect('autosave')}
-                      className={cn(
-                        'p-2 cursor-pointer',
-                        'text-ink-rich dark:text-ink-inverse',
-                        'hover:bg-surface-faint dark:hover:bg-surface-dim/10'
-                      )}
-                    >
-                      {state.autoSave ? 'Disable' : 'Enable'} Auto-Save
-                    </Command.Item>
-                  </>
-                )}
-              </Command.Group>
-
-              {/* Navigation */}
-              <Command.Group heading="Navigation">
-                <Command.Item
-                  onSelect={() => handleSelect('all')}
-                  className={cn(
-                    'p-2 cursor-pointer',
-                    'text-ink-rich dark:text-ink-inverse',
-                    'hover:bg-surface-faint dark:hover:bg-surface-dim/10'
-                  )}
-                >
-                  All Notes
-                </Command.Item>
-                <Command.Item
-                  onSelect={() => handleSelect('graph')}
-                  className={cn(
-                    'p-2 cursor-pointer',
-                    'text-ink-rich dark:text-ink-inverse',
-                    'hover:bg-surface-faint dark:hover:bg-surface-dim/10'
-                  )}
-                >
-                  Knowledge Graph
-                </Command.Item>
-              </Command.Group>
-
-              {/* View Options */}
-              <Command.Group heading="View">
-                <Command.Item
-                  onSelect={() => handleSelect('focus')}
-                  className={cn(
-                    'p-2 cursor-pointer',
-                    'text-ink-rich dark:text-ink-inverse',
-                    'hover:bg-surface-faint dark:hover:bg-surface-dim/10'
-                  )}
-                >
-                  Toggle Focus Mode
-                </Command.Item>
-                <Command.Item
-                  onSelect={() => handleSelect('fullscreen')}
-                  className={cn(
-                    'p-2 cursor-pointer',
-                    'text-ink-rich dark:text-ink-inverse',
-                    'hover:bg-surface-faint dark:hover:bg-surface-dim/10'
-                  )}
-                >
-                  Toggle Fullscreen
-                </Command.Item>
-              </Command.Group>
-
-              {/* Recent Notes */}
-              {recentNotes.length > 0 && (
-                <Command.Group heading="Recent Notes">
-                  {recentNotes.map(note => (
-                    <Command.Item
-                      key={note.id}
-                      onSelect={() => router.push(`/notes/${note.id}`)}
-                      className={cn(
-                        'p-2 cursor-pointer',
-                        'text-ink-rich dark:text-ink-inverse',
-                        'hover:bg-surface-faint dark:hover:bg-surface-dim/10'
-                      )}
-                    >
-                      {note.title || 'Untitled Note'}
-                    </Command.Item>
-                  ))}
-                </Command.Group>
-              )}
-            </Command.List>
-          </Command>
-
-          <Dialog.Close asChild>
-            <button
-              className={cn(
-                'absolute top-3 right-3 p-2 rounded-lg',
-                'text-ink-faint hover:text-ink-rich',
-                'transition-colors duration-normal'
-              )}
+        <Command.List className="mt-4 rounded-lg border border-ink-faint/20 bg-surface-pure dark:bg-surface-dark overflow-hidden">
+          <Command.Group heading="Quick Actions">
+            <Command.Item
+              onSelect={() => {
+                setFocusMode({ enabled: !state.focusMode.enabled });
+                setOpen(false);
+              }}
+              className="px-4 py-2 hover:bg-surface-faint dark:hover:bg-surface-dim/10 cursor-pointer"
             >
-              <VisuallyHidden>Close</VisuallyHidden>
-              <svg
-                width="15"
-                height="15"
-                viewBox="0 0 15 15"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M11.7816 4.03157C12.0062 3.80702 12.0062 3.44295 11.7816 3.2184C11.5571 2.99385 11.193 2.99385 10.9685 3.2184L7.50005 6.68682L4.03164 3.2184C3.80708 2.99385 3.44301 2.99385 3.21846 3.2184C2.99391 3.44295 2.99391 3.80702 3.21846 4.03157L6.68688 7.49999L3.21846 10.9684C2.99391 11.193 2.99391 11.557 3.21846 11.7816C3.44301 12.0061 3.80708 12.0061 4.03164 11.7816L7.50005 8.31316L10.9685 11.7816C11.193 12.0061 11.5571 12.0061 11.7816 11.7816C12.0062 11.557 12.0062 11.193 11.7816 10.9684L8.31322 7.49999L11.7816 4.03157Z"
-                  fill="currentColor"
-                  fillRule="evenodd"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </button>
-          </Dialog.Close>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
-  );
-};
+              Toggle Focus Mode
+            </Command.Item>
+            <Command.Item
+              onSelect={() => {
+                setTypewriterMode({ enabled: !state.typewriterMode.enabled });
+                setOpen(false);
+              }}
+              className="px-4 py-2 hover:bg-surface-faint dark:hover:bg-surface-dim/10 cursor-pointer"
+            >
+              Toggle Typewriter Mode
+            </Command.Item>
+          </Command.Group>
 
-export default CommandPalette;
+          <Command.Group heading="Theme">
+            <Command.Item
+              onSelect={() => {
+                setTheme('light');
+                setOpen(false);
+              }}
+              className="px-4 py-2 hover:bg-surface-faint dark:hover:bg-surface-dim/10 cursor-pointer"
+            >
+              <SunIcon className="w-4 h-4 mr-2 inline-block" />
+              Light Theme
+            </Command.Item>
+            <Command.Item
+              onSelect={() => {
+                setTheme('dark');
+                setOpen(false);
+              }}
+              className="px-4 py-2 hover:bg-surface-faint dark:hover:bg-surface-dim/10 cursor-pointer"
+            >
+              <MoonIcon className="w-4 h-4 mr-2 inline-block" />
+              Dark Theme
+            </Command.Item>
+            <Command.Item
+              onSelect={() => {
+                setTheme('system');
+                setOpen(false);
+              }}
+              className="px-4 py-2 hover:bg-surface-faint dark:hover:bg-surface-dim/10 cursor-pointer"
+            >
+              <ComputerDesktopIcon className="w-4 h-4 mr-2 inline-block" />
+              System Theme
+            </Command.Item>
+          </Command.Group>
+
+          <Command.Group heading="Recent Notes">
+            {notes?.slice(0, 5).map(note => (
+              <Command.Item
+                key={note.id}
+                onSelect={() => {
+                  router.push(`/notes/${note.id}`);
+                  setOpen(false);
+                }}
+                className="px-4 py-2 hover:bg-surface-faint dark:hover:bg-surface-dim/10 cursor-pointer"
+              >
+                <DocumentIcon className="w-4 h-4 mr-2 inline-block" />
+                {note.title || 'Untitled Note'}
+              </Command.Item>
+            ))}
+          </Command.Group>
+
+          <Command.Group heading="Version History">
+            <Command.Item
+              onSelect={() => {
+                // TODO: Implement version history view
+                setOpen(false);
+              }}
+              className="px-4 py-2 hover:bg-surface-faint dark:hover:bg-surface-dim/10 cursor-pointer"
+            >
+              <ClockIcon className="w-4 h-4 mr-2 inline-block" />
+              View Version History
+            </Command.Item>
+          </Command.Group>
+        </Command.List>
+      </div>
+    </Command.Dialog>
+  );
+}

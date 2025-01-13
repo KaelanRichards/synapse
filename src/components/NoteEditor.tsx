@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Textarea, Badge } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { useNoteMutations } from '@/hooks/useNoteMutations';
@@ -27,6 +27,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
     'saved'
   );
   const [isLocalFocusMode, setIsLocalFocusMode] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { updateNote } = useNoteMutations();
   const { state: editorState } = useEditor();
 
@@ -69,6 +70,36 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
     return () => window.removeEventListener('keydown', handleEscape);
   }, [isLocalFocusMode]);
 
+  // Typewriter mode: Keep cursor in view
+  useEffect(() => {
+    if (!editorState.typewriterMode.enabled || !textareaRef.current) return;
+
+    const textarea = textareaRef.current;
+    const handleInput = () => {
+      const selection = window.getSelection();
+      if (!selection?.focusNode) return;
+
+      // Find the caret position
+      const range = selection.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
+
+      // Scroll the caret into the middle of the viewport
+      const viewportHeight = window.innerHeight;
+      const desiredPosition = viewportHeight / 2;
+      const scrollAmount = rect.top - desiredPosition;
+
+      if (editorState.typewriterMode.scrollIntoView) {
+        window.scrollBy({ top: scrollAmount, behavior: 'smooth' });
+      }
+    };
+
+    textarea.addEventListener('input', handleInput);
+    return () => textarea.removeEventListener('input', handleInput);
+  }, [
+    editorState.typewriterMode.enabled,
+    editorState.typewriterMode.scrollIntoView,
+  ]);
+
   const SaveStatusIcon = {
     saved: CheckIcon,
     saving: CloudArrowUpIcon,
@@ -96,7 +127,8 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
         'h-full w-full transition-all duration-normal ease-gentle',
         'bg-surface-pure',
         'flex flex-col',
-        isLocalFocusMode && 'bg-opacity-98'
+        isLocalFocusMode && 'bg-opacity-98',
+        editorState.focusMode.enabled && 'bg-opacity-98'
       )}
     >
       {/* Editor Header */}
@@ -105,7 +137,8 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
           'flex items-center justify-between px-6 py-3 shrink-0',
           'border-b border-ink-faint/20',
           'transition-opacity duration-normal',
-          isLocalFocusMode && 'opacity-0 hover:opacity-100'
+          (isLocalFocusMode || editorState.focusMode.enabled) &&
+            'opacity-0 hover:opacity-100'
         )}
       >
         <div className="flex items-center space-x-4">
@@ -147,10 +180,13 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
         <div
           className={cn(
             'max-w-2xl mx-auto transition-all duration-normal ease-gentle',
-            isLocalFocusMode ? 'px-4 py-12' : 'px-6 py-8'
+            isLocalFocusMode || editorState.focusMode.enabled
+              ? 'px-4 py-12'
+              : 'px-6 py-8'
           )}
         >
           <Textarea
+            ref={textareaRef}
             value={content}
             onChange={e => {
               setContent(e.target.value);
@@ -168,13 +204,18 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
                 'font-sans': editorState.fontFamily === 'sans',
                 'font-mono': editorState.fontFamily === 'mono',
               },
-              isLocalFocusMode && 'text-lg leading-loose'
+              (isLocalFocusMode || editorState.focusMode.enabled) &&
+                'text-lg leading-loose'
             )}
             style={{
-              fontSize: isLocalFocusMode
-                ? `${editorState.fontSize + 2}px`
-                : `${editorState.fontSize}px`,
-              lineHeight: isLocalFocusMode ? '1.8' : '1.75',
+              fontSize:
+                isLocalFocusMode || editorState.focusMode.enabled
+                  ? `${editorState.fontSize + 2}px`
+                  : `${editorState.fontSize}px`,
+              lineHeight:
+                isLocalFocusMode || editorState.focusMode.enabled
+                  ? '1.8'
+                  : '1.75',
             }}
             autoFocus
           />

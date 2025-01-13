@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { SHORTCUTS, useKeyboardShortcuts } from '@/lib/keyboard';
-import CommandPalette from './CommandPalette';
+import { CommandPalette } from './CommandPalette';
 
 interface CommandPaletteProviderProps {
   children: React.ReactNode;
@@ -9,10 +9,8 @@ interface CommandPaletteProviderProps {
 const CommandPaletteProvider: React.FC<CommandPaletteProviderProps> = ({
   children,
 }) => {
-  const [isOpen, setIsOpen] = useState(false);
-
   const handlers = {
-    COMMAND_PALETTE: () => setIsOpen(true),
+    COMMAND_PALETTE: () => {},
   };
 
   const handleKeyDown = useKeyboardShortcuts(SHORTCUTS, handlers);
@@ -24,7 +22,7 @@ const CommandPaletteProvider: React.FC<CommandPaletteProviderProps> = ({
 
   return (
     <>
-      <CommandPalette isOpen={isOpen} onOpenChange={setIsOpen} />
+      <CommandPalette />
       {children}
     </>
   );
