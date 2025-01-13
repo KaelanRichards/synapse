@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Command } from 'cmdk';
 import { useRouter } from 'next/router';
-import { useEditor } from '@/contexts/EditorContext';
+import { useUIStore } from '@/store/uiStore';
 import { useNoteList } from '@/hooks/useNoteList';
 import { cn } from '@/lib/utils';
 import {
@@ -19,13 +19,14 @@ export function CommandPalette() {
   const router = useRouter();
   const { notes } = useNoteList();
   const {
-    state,
+    focusMode,
+    typewriterMode,
     setTheme,
     setFontFamily,
     setFontSize,
     setFocusMode,
     setTypewriterMode,
-  } = useEditor();
+  } = useUIStore();
 
   // Toggle the menu when ⌘K is pressed
   useEffect(() => {
@@ -36,7 +37,7 @@ export function CommandPalette() {
       }
     };
     document.addEventListener('keydown', down);
-    return () => document.removeEventListener('keydown', down);
+    return () => window.removeEventListener('keydown', down);
   }, []);
 
   return (
@@ -64,7 +65,7 @@ export function CommandPalette() {
           <Command.Group heading="Quick Actions">
             <Command.Item
               onSelect={() => {
-                setFocusMode({ enabled: !state.focusMode.enabled });
+                setFocusMode({ enabled: !focusMode.enabled });
                 setOpen(false);
               }}
               className="px-4 py-2 hover:bg-surface-faint dark:hover:bg-surface-dim/10 cursor-pointer"
@@ -73,7 +74,7 @@ export function CommandPalette() {
             </Command.Item>
             <Command.Item
               onSelect={() => {
-                setTypewriterMode({ enabled: !state.typewriterMode.enabled });
+                setTypewriterMode({ enabled: !typewriterMode.enabled });
                 setOpen(false);
               }}
               className="px-4 py-2 hover:bg-surface-faint dark:hover:bg-surface-dim/10 cursor-pointer"

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Modal, Button, Card, Alert, Input, Toggle } from '@/components/ui';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
-import { useEditor } from '@/contexts/EditorContext';
+import { useUIStore } from '@/store/uiStore';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import supabase from '@/lib/supabase';
@@ -22,13 +22,17 @@ type TabId = (typeof TABS)[number]['id'];
 
 const EditorSettingsContent: React.FC = () => {
   const {
-    state,
+    theme,
+    fontSize,
+    fontFamily,
+    focusMode,
+    typewriterMode,
     setTheme,
     setFontSize,
     setFontFamily,
     setFocusMode,
     setTypewriterMode,
-  } = useEditor();
+  } = useUIStore();
 
   return (
     <div className="space-y-8">
@@ -36,14 +40,14 @@ const EditorSettingsContent: React.FC = () => {
       <section>
         <h3 className="text-lg font-medium text-ink-rich mb-4">Theme</h3>
         <div className="flex gap-4">
-          {['light', 'dark', 'system'].map(theme => (
+          {['light', 'dark', 'system'].map(t => (
             <Button
-              key={theme}
-              variant={state.theme === theme ? 'primary' : 'secondary'}
-              onClick={() => setTheme(theme as 'light' | 'dark' | 'system')}
+              key={t}
+              variant={theme === t ? 'primary' : 'secondary'}
+              onClick={() => setTheme(t as 'light' | 'dark' | 'system')}
               className="capitalize"
             >
-              {theme}
+              {t}
             </Button>
           ))}
         </div>
@@ -57,7 +61,7 @@ const EditorSettingsContent: React.FC = () => {
             {(['serif', 'sans', 'mono'] as const).map(font => (
               <Button
                 key={font}
-                variant={state.fontFamily === font ? 'primary' : 'secondary'}
+                variant={fontFamily === font ? 'primary' : 'secondary'}
                 onClick={() => setFontFamily(font)}
                 className={cn('capitalize', {
                   'font-serif': font === 'serif',
@@ -75,11 +79,11 @@ const EditorSettingsContent: React.FC = () => {
               type="range"
               min="12"
               max="24"
-              value={state.fontSize}
+              value={fontSize}
               onChange={e => setFontSize(Number(e.target.value))}
               className="flex-1"
             />
-            <span className="text-sm text-ink-rich">{state.fontSize}px</span>
+            <span className="text-sm text-ink-rich">{fontSize}px</span>
           </div>
         </div>
       </section>
@@ -96,7 +100,7 @@ const EditorSettingsContent: React.FC = () => {
               </p>
             </div>
             <Toggle
-              pressed={state.focusMode.enabled}
+              pressed={focusMode.enabled}
               onPressedChange={enabled => setFocusMode({ enabled })}
             />
           </div>
@@ -108,7 +112,7 @@ const EditorSettingsContent: React.FC = () => {
               </p>
             </div>
             <Toggle
-              pressed={state.focusMode.hideCommands}
+              pressed={focusMode.hideCommands}
               onPressedChange={hideCommands => setFocusMode({ hideCommands })}
             />
           </div>
@@ -120,7 +124,7 @@ const EditorSettingsContent: React.FC = () => {
               </p>
             </div>
             <Toggle
-              pressed={state.focusMode.dimSurroundings}
+              pressed={focusMode.dimSurroundings}
               onPressedChange={dimSurroundings =>
                 setFocusMode({ dimSurroundings })
               }
@@ -145,7 +149,7 @@ const EditorSettingsContent: React.FC = () => {
               </p>
             </div>
             <Toggle
-              pressed={state.typewriterMode.enabled}
+              pressed={typewriterMode.enabled}
               onPressedChange={enabled => setTypewriterMode({ enabled })}
             />
           </div>
@@ -157,7 +161,7 @@ const EditorSettingsContent: React.FC = () => {
               </p>
             </div>
             <Toggle
-              pressed={state.typewriterMode.sound}
+              pressed={typewriterMode.sound}
               onPressedChange={sound => setTypewriterMode({ sound })}
             />
           </div>
@@ -169,7 +173,7 @@ const EditorSettingsContent: React.FC = () => {
               </p>
             </div>
             <Toggle
-              pressed={state.typewriterMode.scrollIntoView}
+              pressed={typewriterMode.scrollIntoView}
               onPressedChange={scrollIntoView =>
                 setTypewriterMode({ scrollIntoView })
               }

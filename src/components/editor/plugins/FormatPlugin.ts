@@ -1,110 +1,134 @@
-import type { Plugin, Editor, FormatType, Selection, Command } from '../types';
+import { createPlugin } from './BasePlugin';
+import type { Editor, FormatType, Selection } from '../types';
 
-export class FormatPlugin implements Plugin {
-  public readonly id = 'format';
-  public readonly name = 'Format';
-  private editor: Editor | null = null;
-  public commands: Command[] = [];
+interface FormatState {
+  lastFormat: FormatType | null;
+}
 
-  init(editor: Editor) {
-    this.editor = editor;
-    this.registerCommands();
+const formatTypes: FormatType[] = [
+  'bold',
+  'italic',
+  'heading',
+  'link',
+  'code',
+  'quote',
+  'list',
+];
 
-    // Register all commands with the editor
-    this.commands.forEach(command => {
-      editor.registerCommand(command);
-    });
+const shortcuts: Record<FormatType, string> = {
+  bold: '⌘B',
+  italic: '⌘I',
+  heading: '⌘H',
+  link: '⌘K',
+  code: '⌘E',
+  quote: '⇧⌘.',
+  list: '⌘L',
+  table: '⌘T',
+  image: '⌘P',
+};
 
-    return () => {
-      this.editor = null;
-    };
+const getFormatPrefix = (type: FormatType): string => {
+  switch (type) {
+    case 'bold':
+      return '**';
+    case 'italic':
+      return '_';
+    case 'heading':
+      return '# ';
+    case 'link':
+      return '[';
+    case 'code':
+      return '`';
+    case 'quote':
+      return '> ';
+    case 'list':
+      return '- ';
+    default:
+      return '';
   }
+};
 
-  private registerCommands() {
-    const formatTypes: FormatType[] = [
-      'bold',
-      'italic',
-      'heading',
-      'link',
-      'code',
-      'quote',
-      'list',
-    ];
+const getFormatSuffix = (type: FormatType): string => {
+  switch (type) {
+    case 'bold':
+      return '**';
+    case 'italic':
+      return '_';
+    case 'link':
+      return '](url)';
+    case 'code':
+      return '`';
+    default:
+      return '';
+  }
+};
 
-    const shortcuts: Record<FormatType, string> = {
-      bold: '⌘B',
-      italic: '⌘I',
-      heading: '⌘H',
-      link: '⌘K',
-      code: '⌘E',
-      quote: '⇧⌘.',
-      list: '⌘L',
-      table: '⌘T',
-      image: '⌘P',
+export const FormatPlugin = createPlugin<FormatState>({
+  id: 'format',
+  name: 'Format',
+
+  initialState: {
+    lastFormat: null,
+  },
+
+  setup: (editor: Editor) => {
+    let pluginState = {
+      lastFormat: null as FormatType | null,
     };
 
+    const updateState = (newState: Partial<FormatState>) => {
+      pluginState = { ...pluginState, ...newState };
+      return pluginState;
+    };
+
+    const format = (type: FormatType) => {
+      const { selection } = editor.state;
+      if (!selection) return;
+
+      // Call beforeFormat hook
+      if (editor.hooks?.beforeFormat?.(type, selection) === false) {
+        return;
+      }
+
+      const prefix = getFormatPrefix(type);
+      const suffix = getFormatSuffix(type);
+
+      const beforeSelection = editor.state.content.slice(0, selection.start);
+      const afterSelection = editor.state.content.slice(selection.end);
+      const selectedText = selection.text;
+
+      editor.state.content =
+        beforeSelection + prefix + selectedText + suffix + afterSelection;
+
+      // Update selection to include formatting
+      editor.state.selection = {
+        start: selection.start + prefix.length,
+        end: selection.end + prefix.length,
+        text: selectedText,
+      };
+
+      updateState({ lastFormat: type });
+
+      // Call afterFormat hook
+      editor.hooks?.afterFormat?.(type, selection);
+    };
+
+    // Register format commands
     formatTypes.forEach(type => {
-      const command: Command = {
+      editor.registerCommand({
         id: `format-${type}`,
         name: type.charAt(0).toUpperCase() + type.slice(1),
         shortcut: shortcuts[type],
         category: 'Format',
-        execute: () => this.format(type),
-      };
-      this.commands.push(command);
+        execute: () => format(type),
+      });
     });
-  }
 
-  private format(type: FormatType) {
-    if (!this.editor) return;
-    const { selection, content } = this.editor.state;
-    if (!selection) return;
-
-    const prefix = this.getFormatPrefix(type);
-    const suffix = this.getFormatSuffix(type);
-    const newContent =
-      content.slice(0, selection.start) +
-      prefix +
-      selection.text +
-      suffix +
-      content.slice(selection.end);
-
-    this.editor.dispatch({ type: 'SET_CONTENT', payload: newContent });
-  }
-
-  private getFormatPrefix(type: FormatType): string {
-    switch (type) {
-      case 'bold':
-        return '**';
-      case 'italic':
-        return '_';
-      case 'heading':
-        return '# ';
-      case 'link':
-        return '[';
-      case 'code':
-        return '`';
-      case 'quote':
-        return '> ';
-      case 'list':
-        return '- ';
-      default:
-        return '';
-    }
-  }
-
-  private getFormatSuffix(type: FormatType): string {
-    switch (type) {
-      case 'bold':
-        return '**';
-      case 'italic':
-        return '_';
-      case 'link':
-        return '](url)';
-      case 'code':
-        return '`';
-      default:
-        return '';
-    }
-  }
-}
+    // Return cleanup function
+    return () => {
+      pluginState = {
+        lastFormat: null,
+      };
+    };
+  },
+});

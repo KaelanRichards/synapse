@@ -1,4 +1,4 @@
-export type SaveStatus = 'saved' | 'saving' | 'unsaved';
+export type SaveStatus = 'saved' | 'saving' | 'unsaved' | 'error';
 
 export interface EditorStats {
   wordCount: number;
@@ -24,6 +24,7 @@ export interface UndoStackItem {
 export interface Plugin {
   id: string;
   name: string;
+  state?: any;
   init?: (editor: Editor) => void | (() => void);
   destroy?: () => void;
   commands?: Command[];
@@ -59,18 +60,27 @@ export interface Decoration {
 // Editor Core Types
 export interface Editor {
   id: string;
-  plugins: Plugin[];
+  plugins: Map<string, Plugin>;
   commands: Map<string, Command>;
   decorations: Map<string, Decoration>;
   state: EditorState;
-  dispatch: (action: EditorAction) => void;
-  subscribe: (subscriber: (state: EditorState) => void) => () => void;
+  dispatch: (action: any) => void;
+  subscribe: (listener: (state: EditorState) => void) => () => void;
   registerPlugin: (plugin: Plugin) => void;
   unregisterPlugin: (pluginId: string) => void;
   registerCommand: (command: Command) => void;
   executeCommand: (commandId: string) => void;
   addDecoration: (decoration: Decoration) => void;
   removeDecoration: (decorationId: string) => void;
+  save?: () => Promise<void>;
+  on: (event: string, handler: (...args: any[]) => void) => void;
+  off: (event: string, handler: (...args: any[]) => void) => void;
+  hooks?: {
+    beforeContentChange?: (content: string) => string;
+    afterContentChange?: (content: string) => void;
+    beforeFormat?: (type: FormatType, selection: Selection) => boolean;
+    afterFormat?: (type: FormatType, selection: Selection) => void;
+  };
 }
 
 export type FormatType =
@@ -104,23 +114,35 @@ export interface AutosavePluginState {
 export interface EditorState {
   content: string;
   selection: Selection | null;
+  plugins: Map<string, Plugin>;
+  commands: Map<string, Command>;
+  decorations: Map<string, Decoration>;
   undoStack: UndoStackItem[];
   redoStack: UndoStackItem[];
   lastUndoTime: number;
-  stats: EditorStats;
-  saveStatus: SaveStatus;
+  stats: {
+    wordCount: number;
+    charCount: number;
+    timeSpent: number;
+    linesCount: number;
+    readingTime: number;
+  };
+  saveStatus: 'saved' | 'saving' | 'error' | 'unsaved';
   isLocalFocusMode: boolean;
   isParagraphFocus: boolean;
   isAmbientSound: boolean;
   showToolbar: boolean;
   toolbarPosition: { x: number; y: number };
-  plugins: {
-    'search-replace'?: SearchReplacePluginState;
-    autosave?: AutosavePluginState;
-    [pluginId: string]: any;
+  focusMode: {
+    enabled: boolean;
+    hideCommands: boolean;
+    dimSurroundings: boolean;
   };
-  decorations: Decoration[];
-  commands: Command[];
+  typewriterMode: {
+    enabled: boolean;
+    sound: boolean;
+    scrollIntoView: boolean;
+  };
 }
 
 export interface EditorProps {
@@ -141,26 +163,3 @@ export interface NoteEditorProps {
   };
   plugins?: Plugin[];
 }
-
-// Editor Action Types
-export type EditorAction =
-  | { type: 'SET_CONTENT'; payload: string }
-  | { type: 'SET_SELECTION'; payload: Selection }
-  | { type: 'ADD_TO_UNDO_STACK'; payload: UndoStackItem }
-  | { type: 'UNDO' }
-  | { type: 'REDO' }
-  | { type: 'UPDATE_STATS'; payload: EditorStats }
-  | { type: 'SET_SAVE_STATUS'; payload: SaveStatus }
-  | { type: 'TOGGLE_FOCUS_MODE' }
-  | { type: 'TOGGLE_PARAGRAPH_FOCUS' }
-  | { type: 'TOGGLE_AMBIENT_SOUND' }
-  | { type: 'UPDATE_PLUGIN_STATE'; payload: { pluginId: string; state: any } }
-  | { type: 'REGISTER_PLUGIN'; payload: Plugin }
-  | { type: 'UNREGISTER_PLUGIN'; payload: string }
-  | { type: 'REGISTER_COMMAND'; payload: Command }
-  | { type: 'UNREGISTER_COMMAND'; payload: string }
-  | { type: 'FORMAT'; payload: { type: FormatType; selection: Selection } }
-  | { type: 'ADD_DECORATION'; payload: Decoration }
-  | { type: 'REMOVE_DECORATION'; payload: string }
-  | { type: 'SET_TOOLBAR_VISIBILITY'; payload: boolean }
-  | { type: 'SET_TOOLBAR_POSITION'; payload: { x: number; y: number } };

@@ -2,7 +2,6 @@ import type { AppProps } from 'next/app';
 import { SupabaseProvider } from '@/contexts/SupabaseContext';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { EditorProvider } from '@/contexts/EditorContext';
 import { useRealtimeNotes } from '@/hooks/useRealtimeNotes';
 import Layout from '@/components/Layout';
 import ProtectedRoute from '@/components/ProtectedRoute';
@@ -31,16 +30,14 @@ export default function App({ Component, pageProps }: AppProps) {
     <QueryClientProvider client={queryClient}>
       <SupabaseProvider>
         <AuthProvider>
-          <EditorProvider>
-            <RealtimeSubscription />
-            <CommandPaletteProvider>
-              <ProtectedRoute>
-                <Layout>
-                  <Component {...pageProps} />
-                </Layout>
-              </ProtectedRoute>
-            </CommandPaletteProvider>
-          </EditorProvider>
+          <RealtimeSubscription />
+          <CommandPaletteProvider>
+            <ProtectedRoute>
+              <Layout>
+                <Component {...pageProps} />
+              </Layout>
+            </ProtectedRoute>
+          </CommandPaletteProvider>
         </AuthProvider>
       </SupabaseProvider>
     </QueryClientProvider>

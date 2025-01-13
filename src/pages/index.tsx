@@ -3,22 +3,22 @@ import { useRouter } from 'next/router';
 import { Textarea } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { playTypewriterSound, enableTypewriterSound } from '@/lib/sounds';
-import { useEditor } from '@/contexts/EditorContext';
+import { useUIStore } from '@/store/uiStore';
 import { useNoteMutations } from '@/hooks/useNoteMutations';
 
 export default function Home() {
   const router = useRouter();
-  const { state: editorState } = useEditor();
+  const { fontSize, fontFamily, typewriterMode } = useUIStore();
   const { createNote } = useNoteMutations();
   const [content, setContent] = useState('');
   const [isReady, setIsReady] = useState(false);
 
   // Enable typewriter sound on mount
   useEffect(() => {
-    if (editorState.soundEnabled) {
+    if (typewriterMode.sound) {
       enableTypewriterSound();
     }
-  }, [editorState.soundEnabled]);
+  }, [typewriterMode.sound]);
 
   // Fade in the editor
   useEffect(() => {
@@ -62,7 +62,7 @@ export default function Home() {
           value={content}
           onChange={e => {
             setContent(e.target.value);
-            if (editorState.soundEnabled) {
+            if (typewriterMode.sound) {
               const lastChar = e.target.value.slice(-1);
               if (lastChar) playTypewriterSound(lastChar);
             }
@@ -75,13 +75,13 @@ export default function Home() {
             'resize-none transition-all duration-normal ease-gentle',
             'tracking-normal',
             {
-              'font-serif': editorState.fontFamily === 'serif',
-              'font-sans': editorState.fontFamily === 'sans',
-              'font-mono': editorState.fontFamily === 'mono',
+              'font-serif': fontFamily === 'serif',
+              'font-sans': fontFamily === 'sans',
+              'font-mono': fontFamily === 'mono',
             }
           )}
           style={{
-            fontSize: `${editorState.fontSize}px`,
+            fontSize: `${fontSize}px`,
           }}
         />
       </div>

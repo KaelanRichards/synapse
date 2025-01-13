@@ -1,5 +1,21 @@
 import type { Plugin, Editor, Command, Decoration } from '../types';
+import { useEffect } from 'react';
 
+// Plugin state type for better type inference
+export interface PluginState<T = unknown> {
+  id: string;
+  name: string;
+  state: T;
+}
+
+// Hook-friendly plugin interface
+export interface HookPlugin<T = unknown> extends Plugin {
+  usePlugin: (editor: Editor) => PluginState<T>;
+  getCommands: (editor: Editor) => Command[];
+  getDecorations: (editor: Editor) => Decoration[];
+}
+
+// Base class for class-based plugins (legacy support)
 export abstract class BasePlugin implements Plugin {
   public readonly id: string;
   public readonly name: string;
@@ -47,28 +63,40 @@ export abstract class BasePlugin implements Plugin {
     };
     this.decorations.push(fullDecoration);
   }
+}
 
-  protected getPluginState<T>(): T | undefined {
-    if (!this.editor) return undefined;
-    return this.editor.state.plugins[this.id] as T;
-  }
+// Helper to create hook-based plugins
+export function createPlugin<T = unknown>(config: {
+  id: string;
+  name: string;
+  initialState: T;
+  setup?: (editor: Editor) => void | (() => void);
+  getCommands?: (editor: Editor, state: T) => Command[];
+  getDecorations?: (editor: Editor, state: T) => Decoration[];
+}): HookPlugin<T> {
+  return {
+    id: config.id,
+    name: config.name,
 
-  protected setPluginState<T>(state: T): void {
-    if (!this.editor) return;
-    this.editor.dispatch({
-      type: 'UPDATE_PLUGIN_STATE',
-      payload: { pluginId: this.id, state },
-    });
-  }
+    usePlugin: (editor: Editor) => {
+      useEffect(() => {
+        return config.setup?.(editor);
+      }, [editor]);
 
-  protected dispatchAction(action: Parameters<Editor['dispatch']>[0]): void {
-    this.editor?.dispatch(action);
-  }
+      return {
+        id: config.id,
+        name: config.name,
+        state: config.initialState,
+      };
+    },
 
-  protected subscribeToState(
-    callback: Parameters<Editor['subscribe']>[0]
-  ): () => void {
-    if (!this.editor) return () => {};
-    return this.editor.subscribe(callback);
-  }
+    getCommands: (editor: Editor) =>
+      config.getCommands?.(editor, config.initialState) ?? [],
+
+    getDecorations: (editor: Editor) =>
+      config.getDecorations?.(editor, config.initialState) ?? [],
+
+    init: () => {},
+    destroy: () => {},
+  };
 }

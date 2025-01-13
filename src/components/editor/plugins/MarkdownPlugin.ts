@@ -1,203 +1,199 @@
-import { BasePlugin } from './BasePlugin';
-import type { Selection, FormatType, Editor } from '../types';
+import { createPlugin } from './BasePlugin';
+import type { Editor, Selection, FormatType } from '../types';
 
-interface MarkdownPluginState {
+interface MarkdownState {
   activeFormats: FormatType[];
 }
 
-export class MarkdownPlugin extends BasePlugin {
-  constructor() {
-    super('markdown', 'Markdown Formatting');
-    this.initCommands();
+const detectActiveFormats = (
+  content: string,
+  selection: Selection
+): FormatType[] => {
+  const activeFormats: FormatType[] = [];
+  const selectedText = content.slice(selection.start, selection.end);
+
+  // Check for bold
+  if (/^\*\*.*\*\*$/.test(selectedText) || /__.*__$/.test(selectedText)) {
+    activeFormats.push('bold');
   }
 
-  public init = (editor: Editor): void | (() => void) => {
-    this.editor = editor;
-    this.setPluginState<MarkdownPluginState>({ activeFormats: [] });
-    return this.destroy;
-  };
+  // Check for italic
+  if (/^_.*_$/.test(selectedText) || /^\*.*\*$/.test(selectedText)) {
+    activeFormats.push('italic');
+  }
 
-  private initCommands() {
-    // Bold
-    this.registerCommand({
+  // Check for code
+  if (/^`.*`$/.test(selectedText)) {
+    activeFormats.push('code');
+  }
+
+  // Check for heading (at line start)
+  const lineStart = content.lastIndexOf('\n', selection.start) + 1;
+  const lineContent = content.slice(lineStart, selection.end);
+  if (/^#+ /.test(lineContent)) {
+    activeFormats.push('heading');
+  }
+
+  // Check for quote
+  if (/^> /.test(lineContent)) {
+    activeFormats.push('quote');
+  }
+
+  // Check for list
+  if (/^[*-] /.test(lineContent)) {
+    activeFormats.push('list');
+  }
+
+  return activeFormats;
+};
+
+export const MarkdownPlugin = createPlugin<MarkdownState>({
+  id: 'markdown',
+  name: 'Markdown Formatting',
+
+  initialState: {
+    activeFormats: [],
+  },
+
+  setup: (editor: Editor) => {
+    let pluginState = {
+      activeFormats: [] as FormatType[],
+    };
+
+    const updateState = (newState: Partial<MarkdownState>) => {
+      pluginState = { ...pluginState, ...newState };
+      return pluginState;
+    };
+
+    const format = (type: FormatType) => {
+      const { selection } = editor.state;
+      if (!selection) return;
+
+      let prefix = '';
+      let suffix = '';
+
+      switch (type) {
+        case 'bold':
+          prefix = '**';
+          suffix = '**';
+          break;
+        case 'italic':
+          prefix = '_';
+          suffix = '_';
+          break;
+        case 'code':
+          prefix = '`';
+          suffix = '`';
+          break;
+        case 'heading':
+          prefix = '# ';
+          break;
+        case 'quote':
+          prefix = '> ';
+          break;
+        case 'list':
+          prefix = '- ';
+          break;
+      }
+
+      const beforeSelection = editor.state.content.slice(0, selection.start);
+      const afterSelection = editor.state.content.slice(selection.end);
+      const selectedText = selection.text;
+
+      editor.state.content =
+        beforeSelection + prefix + selectedText + suffix + afterSelection;
+
+      // Update selection to include formatting
+      editor.state.selection = {
+        start: selection.start + prefix.length,
+        end: selection.end + prefix.length,
+        text: selectedText,
+      };
+
+      // Update active formats
+      const newActiveFormats = detectActiveFormats(
+        editor.state.content,
+        editor.state.selection
+      );
+      updateState({ activeFormats: newActiveFormats });
+    };
+
+    // Subscribe to content and selection changes
+    editor.on('change', () => {
+      if (editor.state.selection) {
+        const activeFormats = detectActiveFormats(
+          editor.state.content,
+          editor.state.selection
+        );
+        if (
+          JSON.stringify(pluginState.activeFormats) !==
+          JSON.stringify(activeFormats)
+        ) {
+          updateState({ activeFormats });
+        }
+      }
+    });
+
+    // Register markdown commands
+    editor.registerCommand({
       id: 'markdown.bold',
       name: 'Bold',
       description: 'Make text bold',
       shortcut: 'Ctrl+B',
       category: 'formatting',
-      execute: () => this.format('bold'),
+      execute: () => format('bold'),
     });
 
-    // Italic
-    this.registerCommand({
+    editor.registerCommand({
       id: 'markdown.italic',
       name: 'Italic',
       description: 'Make text italic',
       shortcut: 'Ctrl+I',
       category: 'formatting',
-      execute: () => this.format('italic'),
+      execute: () => format('italic'),
     });
 
-    // Heading
-    this.registerCommand({
+    editor.registerCommand({
+      id: 'markdown.code',
+      name: 'Code',
+      description: 'Format as inline code',
+      shortcut: 'Ctrl+`',
+      category: 'formatting',
+      execute: () => format('code'),
+    });
+
+    editor.registerCommand({
       id: 'markdown.heading',
       name: 'Heading',
       description: 'Convert to heading',
       shortcut: 'Ctrl+H',
       category: 'formatting',
-      execute: () => this.format('heading'),
+      execute: () => format('heading'),
     });
 
-    // Link
-    this.registerCommand({
-      id: 'markdown.link',
-      name: 'Link',
-      description: 'Insert link',
-      shortcut: 'Ctrl+K',
-      category: 'formatting',
-      execute: () => this.format('link'),
-    });
-
-    // Code
-    this.registerCommand({
-      id: 'markdown.code',
-      name: 'Code',
-      description: 'Format as code',
-      shortcut: 'Ctrl+`',
-      category: 'formatting',
-      execute: () => this.format('code'),
-    });
-
-    // Quote
-    this.registerCommand({
+    editor.registerCommand({
       id: 'markdown.quote',
       name: 'Quote',
-      description: 'Format as quote',
-      shortcut: 'Ctrl+Q',
+      description: 'Convert to blockquote',
+      shortcut: 'Ctrl+>',
       category: 'formatting',
-      execute: () => this.format('quote'),
+      execute: () => format('quote'),
     });
 
-    // List
-    this.registerCommand({
+    editor.registerCommand({
       id: 'markdown.list',
       name: 'List',
-      description: 'Create list',
+      description: 'Convert to list item',
       shortcut: 'Ctrl+L',
       category: 'formatting',
-      execute: () => this.format('list'),
+      execute: () => format('list'),
     });
-  }
 
-  private format(type: FormatType) {
-    if (!this.editor) return;
-
-    const { selection, content } = this.editor.state;
-    if (!selection) return;
-
-    let formattedText = '';
-    const { start, end, text } = selection;
-
-    switch (type) {
-      case 'bold':
-        formattedText = `**${text}**`;
-        break;
-      case 'italic':
-        formattedText = `_${text}_`;
-        break;
-      case 'heading':
-        formattedText = `\n# ${text}`;
-        break;
-      case 'link':
-        formattedText = `[${text}]()`;
-        break;
-      case 'code':
-        formattedText = `\`${text}\``;
-        break;
-      case 'quote':
-        formattedText = text
-          .split('\n')
-          .map(line => `> ${line}`)
-          .join('\n');
-        break;
-      case 'list':
-        formattedText = text
-          .split('\n')
-          .map(line => `- ${line}`)
-          .join('\n');
-        break;
-      default:
-        return;
-    }
-
-    const newContent =
-      content.substring(0, start) + formattedText + content.substring(end);
-
-    this.dispatchAction({ type: 'SET_CONTENT', payload: newContent });
-
-    // Update selection to include markdown syntax
-    const newSelection: Selection = {
-      start,
-      end: start + formattedText.length,
-      text: formattedText,
+    // Return cleanup function
+    return () => {
+      pluginState = {
+        activeFormats: [],
+      };
     };
-    this.dispatchAction({ type: 'SET_SELECTION', payload: newSelection });
-
-    // Update active formats
-    const state = this.getPluginState<MarkdownPluginState>();
-    if (state) {
-      const uniqueFormats = Array.from(new Set([...state.activeFormats, type]));
-      this.setPluginState<MarkdownPluginState>({
-        activeFormats: uniqueFormats,
-      });
-    }
-  }
-
-  public hooks = {
-    beforeContentChange: (content: string): string => {
-      // Add any content preprocessing here
-      return content;
-    },
-    afterContentChange: (content: string): void => {
-      // Update active formats based on cursor position
-      if (!this.editor?.state.selection) return;
-
-      const activeFormats = this.detectActiveFormats(
-        content,
-        this.editor.state.selection
-      );
-      const state = this.getPluginState<MarkdownPluginState>();
-      if (
-        state &&
-        JSON.stringify(state.activeFormats) !== JSON.stringify(activeFormats)
-      ) {
-        this.setPluginState<MarkdownPluginState>({ activeFormats });
-      }
-    },
-  };
-
-  private detectActiveFormats(
-    content: string,
-    selection: Selection
-  ): FormatType[] {
-    const activeFormats: FormatType[] = [];
-    const line = content.split('\n').find((_, i, lines) => {
-      const lineStart = lines.slice(0, i).join('\n').length + (i > 0 ? 1 : 0);
-      const lineEnd = lineStart + lines[i].length;
-      return selection.start >= lineStart && selection.start <= lineEnd;
-    });
-
-    if (!line) return activeFormats;
-
-    // Check for formats
-    if (line.match(/\*\*.*\*\*/)) activeFormats.push('bold');
-    if (line.match(/_.*_/)) activeFormats.push('italic');
-    if (line.match(/^#/)) activeFormats.push('heading');
-    if (line.match(/\[.*\]\(.*\)/)) activeFormats.push('link');
-    if (line.match(/`.*`/)) activeFormats.push('code');
-    if (line.match(/^>/)) activeFormats.push('quote');
-    if (line.match(/^-/)) activeFormats.push('list');
-
-    return activeFormats;
-  }
-}
+  },
+});
