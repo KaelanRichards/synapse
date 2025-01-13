@@ -40,7 +40,7 @@ type EditorAction =
       type: 'SET_TYPEWRITER_MODE';
       payload: Partial<EditorState['typewriterMode']>;
     }
-  | { type: 'LOAD_SAVED_STATE'; payload: EditorState };
+  | { type: 'LOAD_SAVED_STATE'; payload: Partial<EditorState> };
 
 const defaultState: EditorState = {
   mode: 'default',
@@ -61,6 +61,22 @@ const defaultState: EditorState = {
   },
 };
 
+// Deep merge function for nested objects
+const deepMerge = (target: any, source: any): any => {
+  if (source === null || typeof source !== 'object') return source;
+  if (target === null || typeof target !== 'object') return source;
+
+  const result = { ...target };
+  for (const key in source) {
+    if (typeof source[key] === 'object' && key in target) {
+      result[key] = deepMerge(target[key], source[key]);
+    } else {
+      result[key] = source[key];
+    }
+  }
+  return result;
+};
+
 // Load initial state from localStorage or use default
 const loadSavedState = (): EditorState => {
   if (typeof window === 'undefined') return defaultState;
@@ -70,7 +86,7 @@ const loadSavedState = (): EditorState => {
 
   try {
     const parsed = JSON.parse(saved);
-    return { ...defaultState, ...parsed };
+    return deepMerge(defaultState, parsed);
   } catch (e) {
     console.error('Failed to parse saved editor settings:', e);
     return defaultState;
@@ -115,7 +131,7 @@ const editorReducer = (
       };
       break;
     case 'LOAD_SAVED_STATE':
-      newState = action.payload;
+      newState = deepMerge(defaultState, action.payload);
       break;
     default:
       return state;
@@ -152,12 +168,14 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     async function loadSettings() {
       if (!user) {
+        console.log('No user, loading from localStorage');
         const localState = loadSavedState();
         dispatch({ type: 'LOAD_SAVED_STATE', payload: localState });
         return;
       }
 
       try {
+        console.log('Loading settings from database for user:', user.id);
         // Try to load from database first
         const { data, error } = await supabase
           .from('user_settings')
@@ -170,17 +188,20 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
         }
 
         if (data?.editor_settings) {
+          console.log('Found settings in database:', data.editor_settings);
           dispatch({
             type: 'LOAD_SAVED_STATE',
-            payload: { ...defaultState, ...data.editor_settings },
+            payload: data.editor_settings,
           });
         } else {
+          console.log('No settings in database, checking localStorage');
           // If no settings in DB, try localStorage
           const localState = loadSavedState();
           dispatch({ type: 'LOAD_SAVED_STATE', payload: localState });
 
-          // Save localStorage settings to DB if they exist
-          if (localState !== defaultState) {
+          // Save localStorage settings to DB if they exist and differ from default
+          if (JSON.stringify(localState) !== JSON.stringify(defaultState)) {
+            console.log('Saving localStorage settings to database');
             await supabase.from('user_settings').upsert({
               user_id: user.id,
               editor_settings: localState,
@@ -201,15 +222,22 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
   // Save settings to database when they change
   useEffect(() => {
     async function saveSettings() {
-      if (!user) return;
+      if (!user) {
+        console.log('No user, skipping database save');
+        return;
+      }
 
       try {
-        const { error } = await supabase.from('user_settings').upsert({
-          user_id: user.id,
-          editor_settings: state,
-        });
+        console.log('Saving settings to database:', state);
+        const { error } = await supabase
+          .from('user_settings')
+          .upsert(
+            { user_id: user.id, editor_settings: state },
+            { onConflict: 'user_id' }
+          );
 
         if (error) throw error;
+        console.log('Settings saved successfully');
       } catch (err) {
         console.error('Failed to save settings to database:', err);
       }
