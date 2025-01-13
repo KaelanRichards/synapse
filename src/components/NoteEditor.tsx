@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Textarea } from '@/components/ui';
+import { Textarea, Badge } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { useNoteMutations } from '@/hooks/useNoteMutations';
 import { useEditor } from '@/contexts/EditorContext';
@@ -75,11 +75,26 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
     unsaved: ExclamationCircleIcon,
   }[saveStatus];
 
+  const getStatusVariant = (
+    status: typeof saveStatus
+  ): 'success' | 'warning' | 'error' => {
+    switch (status) {
+      case 'saved':
+        return 'success';
+      case 'saving':
+        return 'warning';
+      case 'unsaved':
+        return 'error';
+    }
+  };
+
+  const statusVariant = getStatusVariant(saveStatus);
+
   return (
     <div
       className={cn(
-        'h-full w-full transition-all duration-300',
-        'bg-surface-pure dark:bg-surface-dark',
+        'h-full w-full transition-all duration-normal ease-gentle',
+        'bg-surface-pure',
         'flex flex-col',
         isLocalFocusMode && 'bg-opacity-98'
       )}
@@ -88,51 +103,34 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
       <div
         className={cn(
           'flex items-center justify-between px-6 py-3 shrink-0',
-          'border-b border-gray-200 dark:border-gray-800',
-          'transition-opacity duration-300',
+          'border-b border-ink-faint/20',
+          'transition-opacity duration-normal',
           isLocalFocusMode && 'opacity-0 hover:opacity-100'
         )}
       >
         <div className="flex items-center space-x-4">
-          <h1 className="text-lg font-medium text-ink-rich dark:text-ink-inverse">
+          <h1 className="text-lg font-medium text-ink-rich">
             {initialNote?.title || 'Untitled Note'}
           </h1>
-          <div className="flex items-center space-x-1.5 text-xs">
-            <SaveStatusIcon
-              className={cn(
-                'h-4 w-4',
-                saveStatus === 'saved'
-                  ? 'text-green-500'
-                  : saveStatus === 'saving'
-                    ? 'text-yellow-500'
-                    : 'text-red-500'
-              )}
-            />
-            <span
-              className={cn(
-                'px-2 py-1 rounded-full',
-                saveStatus === 'saved'
-                  ? 'text-green-600 bg-green-50 dark:text-green-400 dark:bg-green-900/20'
-                  : saveStatus === 'saving'
-                    ? 'text-yellow-600 bg-yellow-50 dark:text-yellow-400 dark:bg-yellow-900/20'
-                    : 'text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-900/20'
-              )}
-            >
+          <div className="flex items-center space-x-1.5">
+            <SaveStatusIcon className="h-4 w-4" />
+            <Badge variant={statusVariant}>
               {saveStatus === 'saved'
                 ? 'Saved'
                 : saveStatus === 'saving'
                   ? 'Saving...'
                   : 'Unsaved'}
-            </span>
+            </Badge>
           </div>
         </div>
         <button
           onClick={() => setIsLocalFocusMode(!isLocalFocusMode)}
           className={cn(
-            'p-1.5 rounded-md transition-all duration-200',
-            'text-gray-400 hover:text-neutral-900 dark:hover:text-white',
-            'hover:bg-gray-50 dark:hover:bg-gray-800',
-            isLocalFocusMode && 'text-primary-500 hover:text-primary-600'
+            'p-1.5 rounded-md transition-all duration-normal ease-gentle',
+            'text-ink-muted hover:text-ink-rich',
+            'hover:bg-surface-faint',
+            isLocalFocusMode &&
+              'text-accent-primary hover:text-accent-primary/90'
           )}
           title={isLocalFocusMode ? 'Exit Focus Mode' : 'Enter Focus Mode'}
         >
@@ -148,7 +146,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
       <div className="flex-1 overflow-y-auto">
         <div
           className={cn(
-            'max-w-2xl mx-auto transition-all duration-300',
+            'max-w-2xl mx-auto transition-all duration-normal ease-gentle',
             isLocalFocusMode ? 'px-4 py-12' : 'px-6 py-8'
           )}
         >
@@ -162,8 +160,8 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
             className={cn(
               'w-full min-h-[calc(100vh-16rem)] bg-transparent border-0 focus:ring-0',
               'resize-none focus:outline-none',
-              'text-ink-rich dark:text-ink-inverse',
-              'transition-all duration-300',
+              'text-ink-rich',
+              'transition-all duration-normal ease-gentle',
               'tracking-normal',
               {
                 'font-serif': editorState.fontFamily === 'serif',

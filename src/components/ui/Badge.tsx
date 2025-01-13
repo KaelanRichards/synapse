@@ -3,18 +3,19 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
 const badgeVariants = cva(
-  'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium transition-all duration-medium ease-flow focus:outline-none focus:ring-2 focus:ring-water-light focus:ring-offset-2',
+  'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium transition-all duration-normal ease-gentle focus:outline-none focus:ring-2 focus:ring-accent-primary focus:ring-offset-2',
   {
     variants: {
       variant: {
         default:
-          'bg-water-light/15 text-water-deep border border-water-light/30',
-        secondary: 'bg-mist-gray/15 text-mist-black border border-mist-gray/30',
+          'bg-accent-primary/15 text-ink-rich border border-accent-primary/30',
+        secondary:
+          'bg-surface-dim/15 text-ink-rich border border-surface-dim/30',
         success:
-          'bg-garden-green/15 text-garden-green border border-garden-green/30',
-        error: 'bg-error-100 text-error-600 border border-error-200',
+          'bg-accent-success/15 text-ink-rich border border-accent-success/30',
+        error: 'bg-accent-error/15 text-ink-rich border border-accent-error/30',
         warning:
-          'bg-garden-thread/15 text-mist-black border border-garden-thread/30',
+          'bg-accent-warning/15 text-ink-rich border border-accent-warning/30',
       },
     },
     defaultVariants: {

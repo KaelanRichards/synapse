@@ -30,57 +30,55 @@ export function Modal({
       <Dialog as="div" className="relative z-50" onClose={onClose}>
         <Transition.Child
           as={Fragment}
-          enter="ease-flow duration-medium"
+          enter="ease-gentle duration-normal"
           enterFrom="opacity-0"
           enterTo="opacity-100"
-          leave="ease-flow duration-medium"
+          leave="ease-gentle duration-normal"
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-mist-black/25 backdrop-blur-xs" />
+          <div className="fixed inset-0 bg-ink-pure/25 backdrop-blur-sm" />
         </Transition.Child>
 
         <div className="fixed inset-0 overflow-y-auto">
-          <div className="flex min-h-full items-center justify-center p-4 text-center">
+          <div className="flex min-h-full items-center justify-center p-4">
             <Transition.Child
               as={Fragment}
-              enter="ease-flow duration-medium"
+              enter="ease-gentle duration-normal"
               enterFrom="opacity-0 scale-95"
               enterTo="opacity-100 scale-100"
-              leave="ease-flow duration-medium"
+              leave="ease-gentle duration-normal"
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
               <DialogPanel
                 className={cn(
-                  'w-full max-w-md transform overflow-hidden rounded-lg border border-garden-thread bg-mist-white p-6 text-left shadow-deep-well transition-all duration-medium ease-flow',
+                  'w-full max-w-md transform overflow-hidden rounded-lg bg-surface-pure p-6 shadow-command text-left align-middle transition-all',
                   className
                 )}
               >
                 {title && (
                   <Dialog.Title
                     as="h3"
-                    className="text-lg font-medium leading-6 text-mist-black pr-8"
+                    className="text-lg font-medium leading-6 text-ink-rich"
                   >
                     {title}
                   </Dialog.Title>
                 )}
-
-                <button
-                  onClick={onClose}
-                  className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-mist-white transition-all duration-medium ease-flow hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-water-light focus:ring-offset-2"
-                >
-                  <XMarkIcon className="h-4 w-4 text-mist-black" />
-                  <span className="sr-only">Close</span>
-                </button>
-
                 {description && (
-                  <Description className="mt-2 text-sm text-mist-black/70">
+                  <Description className="mt-2 text-sm text-ink-muted">
                     {description}
                   </Description>
                 )}
-
                 <div className="mt-4">{children}</div>
+
+                <button
+                  onClick={onClose}
+                  className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-surface-pure transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-accent-primary focus:ring-offset-2"
+                >
+                  <XMarkIcon className="h-4 w-4 text-ink-muted" />
+                  <span className="sr-only">Close</span>
+                </button>
               </DialogPanel>
             </Transition.Child>
           </div>

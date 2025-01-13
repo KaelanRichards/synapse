@@ -1,7 +1,7 @@
 import React from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import { Select, Button } from '@/components/ui';
+import { Select, Button, Input } from '@/components/ui';
 import { StarIcon as StarOutline } from '@heroicons/react/24/outline';
 import { StarIcon as StarSolid } from '@heroicons/react/24/solid';
 import { MagnifyingGlassIcon, FunnelIcon } from '@heroicons/react/24/outline';
@@ -47,19 +47,16 @@ export const SearchBar = ({
 }) => (
   <div className="flex items-center space-x-2">
     <div className="relative flex-1">
-      <MagnifyingGlassIcon className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-      <input
+      <MagnifyingGlassIcon className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
+      <Input
         type="text"
         placeholder="Search notes..."
         value={value}
         onChange={e => onChange(e.target.value)}
-        className="w-full rounded-md border border-gray-200 pl-8 pr-4 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+        className="pl-8"
       />
     </div>
-    <Button
-      onClick={onToggleFilters}
-      className="p-2 hover:bg-accent-50 rounded-md"
-    >
+    <Button variant="ghost" size="sm" onClick={onToggleFilters} className="p-2">
       <FunnelIcon className="h-4 w-4" />
     </Button>
   </div>
@@ -131,20 +128,18 @@ export const NoteItem = React.memo(
     return (
       <div
         className={cn(
-          'group relative rounded-lg transition-all duration-200',
-          isActive
-            ? 'bg-accent-50 dark:bg-accent-900/20'
-            : 'hover:bg-accent-50/50 dark:hover:bg-accent-900/10',
-          isDragging && 'shadow-lg'
+          'group relative rounded-lg transition-all duration-normal ease-gentle',
+          isActive ? 'bg-accent-primary/10' : 'hover:bg-surface-faint',
+          isDragging && 'shadow-floating'
         )}
       >
         <a onClick={handleClick} className="block p-2">
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <h3 className="font-medium text-sm text-ink-rich dark:text-ink-inverse line-clamp-1">
+              <h3 className="font-medium text-sm text-ink-rich line-clamp-1">
                 {note.title || 'Untitled Note'}
               </h3>
-              <p className="text-xs text-gray-500 line-clamp-2 mt-1">
+              <p className="text-xs text-ink-muted line-clamp-2 mt-1">
                 {truncatedContent}
               </p>
             </div>
@@ -155,10 +150,10 @@ export const NoteItem = React.memo(
                   onTogglePin(note.id);
                 }}
                 className={cn(
-                  'p-1 rounded-md transition-all duration-200',
+                  'p-1 rounded-md transition-all duration-normal ease-gentle',
                   note.is_pinned
-                    ? 'text-amber-500'
-                    : 'text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100'
+                    ? 'text-accent-warning'
+                    : 'text-ink-muted hover:text-ink-rich opacity-0 group-hover:opacity-100'
                 )}
               >
                 {note.is_pinned ? (

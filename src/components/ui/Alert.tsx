@@ -10,18 +10,18 @@ import {
 } from '@heroicons/react/24/outline';
 
 const alertVariants = cva(
-  'relative w-full rounded-lg border p-4 [&>svg~*]:pl-7 [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:h-5 [&>svg]:w-5',
+  'relative w-full rounded-lg border p-4 [&>svg~*]:pl-7 [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:h-5 [&>svg]:w-5 shadow-subtle',
   {
     variants: {
       variant: {
         default:
-          'bg-neutral-50 text-neutral-900 border-neutral-200 [&>svg]:text-neutral-900',
+          'bg-surface-faint text-ink-rich border-ink-faint [&>svg]:text-ink-rich',
         success:
-          'bg-success-50 text-success-900 border-success-200 [&>svg]:text-success-900',
+          'bg-accent-success/10 text-ink-rich border-accent-success/20 [&>svg]:text-accent-success',
         error:
-          'bg-error-50 text-error-900 border-error-200 [&>svg]:text-error-900',
+          'bg-accent-error/10 text-ink-rich border-accent-error/20 [&>svg]:text-accent-error',
         warning:
-          'bg-warning-50 text-warning-900 border-warning-200 [&>svg]:text-warning-900',
+          'bg-accent-warning/10 text-ink-rich border-accent-warning/20 [&>svg]:text-accent-warning',
       },
     },
     defaultVariants: {
@@ -63,16 +63,16 @@ export function Alert({
       <Icon />
       <div className="flex-1">
         {title && (
-          <h5 className="mb-1 font-medium leading-none tracking-tight">
+          <h5 className="mb-1 font-medium leading-none tracking-tight text-ink-rich">
             {title}
           </h5>
         )}
-        <div className="text-sm [&_p]:leading-relaxed">{children}</div>
+        <div className="text-sm text-ink-muted">{children}</div>
       </div>
       {onClose && (
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-neutral-500 focus:ring-offset-2"
+          className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-surface-pure transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-accent-primary focus:ring-offset-2"
         >
           <XMarkIcon className="h-4 w-4" />
           <span className="sr-only">Close</span>

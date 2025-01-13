@@ -1,6 +1,7 @@
 import React from 'react';
 import { useEditor } from '@/contexts/EditorContext';
 import { cn } from '@/lib/utils';
+import { Button, Toggle, Card, Input } from '@/components/ui';
 
 const Settings: React.FC = () => {
   const {
@@ -15,63 +16,50 @@ const Settings: React.FC = () => {
   } = useEditor();
 
   return (
-    <div className="max-w-2xl mx-auto p-8">
-      <h2 className="text-2xl font-bold mb-8">Editor Settings</h2>
-
+    <div className="space-y-8">
       {/* Theme */}
-      <section className="mb-8">
-        <h3 className="text-lg font-semibold mb-4">Theme</h3>
+      <section>
+        <h3 className="text-lg font-medium text-ink-rich mb-4">Theme</h3>
         <div className="flex gap-4">
           {['light', 'dark', 'system'].map(theme => (
-            <button
+            <Button
               key={theme}
+              variant={state.theme === theme ? 'primary' : 'secondary'}
               onClick={() => setTheme(theme as 'light' | 'dark' | 'system')}
-              className={cn(
-                'px-4 py-2 rounded-lg capitalize',
-                'transition-colors duration-normal',
-                state.theme === theme
-                  ? 'bg-accent-primary text-ink-inverse'
-                  : 'bg-surface-alt hover:bg-surface-alt/80'
-              )}
+              className="capitalize"
             >
               {theme}
-            </button>
+            </Button>
           ))}
         </div>
       </section>
 
       {/* Font */}
-      <section className="mb-8">
-        <h3 className="text-lg font-semibold mb-4">Typography</h3>
+      <section>
+        <h3 className="text-lg font-medium text-ink-rich mb-4">Typography</h3>
         <div className="space-y-4">
           {/* Font Family */}
           <div className="flex gap-4">
             {(['serif', 'sans', 'mono'] as const).map(font => (
-              <button
+              <Button
                 key={font}
+                variant={state.fontFamily === font ? 'primary' : 'secondary'}
                 onClick={() => setFontFamily(font)}
-                className={cn(
-                  'px-4 py-2 rounded-lg capitalize',
-                  'transition-colors duration-normal',
-                  state.fontFamily === font
-                    ? 'bg-accent-primary text-ink-inverse'
-                    : 'bg-surface-alt hover:bg-surface-alt/80',
-                  {
-                    'font-serif': font === 'serif',
-                    'font-sans': font === 'sans',
-                    'font-mono': font === 'mono',
-                  }
-                )}
+                className={cn('capitalize', {
+                  'font-serif': font === 'serif',
+                  'font-sans': font === 'sans',
+                  'font-mono': font === 'mono',
+                })}
               >
                 {font}
-              </button>
+              </Button>
             ))}
           </div>
 
           {/* Font Size */}
           <div className="flex items-center gap-4">
-            <label className="text-sm">Size</label>
-            <input
+            <label className="text-sm font-medium text-ink-rich">Size</label>
+            <Input
               type="range"
               min="12"
               max="24"
@@ -79,212 +67,105 @@ const Settings: React.FC = () => {
               onChange={e => setFontSize(Number(e.target.value))}
               className="flex-1"
             />
-            <span className="text-sm">{state.fontSize}px</span>
+            <span className="text-sm text-ink-rich">{state.fontSize}px</span>
           </div>
         </div>
       </section>
 
       {/* Focus Mode */}
-      <section className="mb-8">
-        <h3 className="text-lg font-semibold mb-4">Focus Mode</h3>
+      <section>
+        <h3 className="text-lg font-medium text-ink-rich mb-4">Focus Mode</h3>
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h4 className="font-medium">Enable Focus Mode</h4>
-              <p className="text-sm text-ink-faint">
+              <h4 className="font-medium text-ink-rich">Enable Focus Mode</h4>
+              <p className="text-sm text-ink-muted">
                 Minimize distractions while writing
               </p>
             </div>
-            <button
-              onClick={() =>
-                setFocusMode({ enabled: !state.focusMode.enabled })
-              }
-              className={cn(
-                'w-12 h-6 rounded-full relative transition-colors duration-normal',
-                state.focusMode.enabled ? 'bg-accent-primary' : 'bg-surface-alt'
-              )}
-            >
-              <span
-                className={cn(
-                  'absolute top-1 w-4 h-4 rounded-full bg-ink-inverse transition-transform duration-normal',
-                  state.focusMode.enabled ? 'left-7' : 'left-1'
-                )}
-              />
-            </button>
+            <Toggle
+              pressed={state.focusMode.enabled}
+              onPressedChange={enabled => setFocusMode({ enabled })}
+            />
           </div>
 
           <div className="flex items-center justify-between">
             <div>
-              <h4 className="font-medium">Hide Command Bar</h4>
-              <p className="text-sm text-ink-faint">
+              <h4 className="font-medium text-ink-rich">Hide Command Bar</h4>
+              <p className="text-sm text-ink-muted">
                 Hide command bar in focus mode
               </p>
             </div>
-            <button
-              onClick={() =>
-                setFocusMode({ hideCommands: !state.focusMode.hideCommands })
-              }
-              className={cn(
-                'w-12 h-6 rounded-full relative transition-colors duration-normal',
-                state.focusMode.hideCommands
-                  ? 'bg-accent-primary'
-                  : 'bg-surface-alt'
-              )}
-            >
-              <span
-                className={cn(
-                  'absolute top-1 w-4 h-4 rounded-full bg-ink-inverse transition-transform duration-normal',
-                  state.focusMode.hideCommands ? 'left-7' : 'left-1'
-                )}
-              />
-            </button>
+            <Toggle
+              pressed={state.focusMode.hideCommands}
+              onPressedChange={hideCommands => setFocusMode({ hideCommands })}
+            />
           </div>
 
           <div className="flex items-center justify-between">
             <div>
-              <h4 className="font-medium">Dim Surroundings</h4>
-              <p className="text-sm text-ink-faint">
+              <h4 className="font-medium text-ink-rich">Dim Surroundings</h4>
+              <p className="text-sm text-ink-muted">
                 Fade out everything except current paragraph
               </p>
             </div>
-            <button
-              onClick={() =>
-                setFocusMode({
-                  dimSurroundings: !state.focusMode.dimSurroundings,
-                })
+            <Toggle
+              pressed={state.focusMode.dimSurroundings}
+              onPressedChange={dimSurroundings =>
+                setFocusMode({ dimSurroundings })
               }
-              className={cn(
-                'w-12 h-6 rounded-full relative transition-colors duration-normal',
-                state.focusMode.dimSurroundings
-                  ? 'bg-accent-primary'
-                  : 'bg-surface-alt'
-              )}
-            >
-              <span
-                className={cn(
-                  'absolute top-1 w-4 h-4 rounded-full bg-ink-inverse transition-transform duration-normal',
-                  state.focusMode.dimSurroundings ? 'left-7' : 'left-1'
-                )}
-              />
-            </button>
+            />
           </div>
         </div>
       </section>
 
       {/* Typewriter Mode */}
-      <section className="mb-8">
-        <h3 className="text-lg font-semibold mb-4">Typewriter Mode</h3>
+      <section>
+        <h3 className="text-lg font-medium text-ink-rich mb-4">
+          Typewriter Mode
+        </h3>
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h4 className="font-medium">Enable Typewriter Mode</h4>
-              <p className="text-sm text-ink-faint">
+              <h4 className="font-medium text-ink-rich">
+                Enable Typewriter Mode
+              </h4>
+              <p className="text-sm text-ink-muted">
                 Keep cursor centered while typing
               </p>
             </div>
-            <button
-              onClick={() =>
-                setTypewriterMode({ enabled: !state.typewriterMode.enabled })
-              }
-              className={cn(
-                'w-12 h-6 rounded-full relative transition-colors duration-normal',
-                state.typewriterMode.enabled
-                  ? 'bg-accent-primary'
-                  : 'bg-surface-alt'
-              )}
-            >
-              <span
-                className={cn(
-                  'absolute top-1 w-4 h-4 rounded-full bg-ink-inverse transition-transform duration-normal',
-                  state.typewriterMode.enabled ? 'left-7' : 'left-1'
-                )}
-              />
-            </button>
+            <Toggle
+              pressed={state.typewriterMode.enabled}
+              onPressedChange={enabled => setTypewriterMode({ enabled })}
+            />
           </div>
 
           <div className="flex items-center justify-between">
             <div>
-              <h4 className="font-medium">Typewriter Sound</h4>
-              <p className="text-sm text-ink-faint">
+              <h4 className="font-medium text-ink-rich">Typewriter Sound</h4>
+              <p className="text-sm text-ink-muted">
                 Play mechanical keyboard sounds
               </p>
             </div>
-            <button
-              onClick={() =>
-                setTypewriterMode({ sound: !state.typewriterMode.sound })
-              }
-              className={cn(
-                'w-12 h-6 rounded-full relative transition-colors duration-normal',
-                state.typewriterMode.sound
-                  ? 'bg-accent-primary'
-                  : 'bg-surface-alt'
-              )}
-            >
-              <span
-                className={cn(
-                  'absolute top-1 w-4 h-4 rounded-full bg-ink-inverse transition-transform duration-normal',
-                  state.typewriterMode.sound ? 'left-7' : 'left-1'
-                )}
-              />
-            </button>
+            <Toggle
+              pressed={state.typewriterMode.sound}
+              onPressedChange={sound => setTypewriterMode({ sound })}
+            />
           </div>
 
           <div className="flex items-center justify-between">
             <div>
-              <h4 className="font-medium">Auto-scroll</h4>
-              <p className="text-sm text-ink-faint">
+              <h4 className="font-medium text-ink-rich">Auto-scroll</h4>
+              <p className="text-sm text-ink-muted">
                 Keep cursor in view while typing
               </p>
             </div>
-            <button
-              onClick={() =>
-                setTypewriterMode({
-                  scrollIntoView: !state.typewriterMode.scrollIntoView,
-                })
+            <Toggle
+              pressed={state.typewriterMode.scrollIntoView}
+              onPressedChange={scrollIntoView =>
+                setTypewriterMode({ scrollIntoView })
               }
-              className={cn(
-                'w-12 h-6 rounded-full relative transition-colors duration-normal',
-                state.typewriterMode.scrollIntoView
-                  ? 'bg-accent-primary'
-                  : 'bg-surface-alt'
-              )}
-            >
-              <span
-                className={cn(
-                  'absolute top-1 w-4 h-4 rounded-full bg-ink-inverse transition-transform duration-normal',
-                  state.typewriterMode.scrollIntoView ? 'left-7' : 'left-1'
-                )}
-              />
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* Auto Save */}
-      <section className="mb-8">
-        <h3 className="text-lg font-semibold mb-4">Features</h3>
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h4 className="font-medium">Auto Save</h4>
-              <p className="text-sm text-ink-faint">
-                Automatically save changes while typing
-              </p>
-            </div>
-            <button
-              onClick={toggleAutoSave}
-              className={cn(
-                'w-12 h-6 rounded-full relative transition-colors duration-normal',
-                state.autoSave ? 'bg-accent-primary' : 'bg-surface-alt'
-              )}
-            >
-              <span
-                className={cn(
-                  'absolute top-1 w-4 h-4 rounded-full bg-ink-inverse transition-transform duration-normal',
-                  state.autoSave ? 'left-7' : 'left-1'
-                )}
-              />
-            </button>
+            />
           </div>
         </div>
       </section>
