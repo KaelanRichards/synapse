@@ -1,102 +1,154 @@
-import type { Plugin, Editor, Command, Decoration } from '../types';
-import { useEffect } from 'react';
+import type { Editor, Selection, FormatType } from '../types';
+import type {
+  EnhancedPlugin,
+  PluginConfig,
+  PluginLifecycle,
+  PluginEventBus,
+  Command,
+  Decoration,
+  PluginHooks,
+} from '../types/plugin';
 
-// Plugin state type for better type inference
-export interface PluginState<T = unknown> {
-  id: string;
-  name: string;
-  state: T;
-}
-
-// Hook-friendly plugin interface
-export interface HookPlugin<T = unknown> extends Plugin {
-  usePlugin: (editor: Editor) => PluginState<T>;
-  getCommands: (editor: Editor) => Command[];
-  getDecorations: (editor: Editor) => Decoration[];
-}
-
-// Base class for class-based plugins (legacy support)
-export abstract class BasePlugin implements Plugin {
+export abstract class BasePlugin<TState extends Record<string, unknown>>
+  implements EnhancedPlugin<TState>
+{
   public readonly id: string;
-  public readonly name: string;
+  public readonly config: PluginConfig;
+  public readonly lifecycle?: PluginLifecycle;
+  public state!: TState;
   public commands: Command[] = [];
   public decorations: Decoration[] = [];
+  public hooks: {
+    [key: string]: (...args: any[]) => void;
+  } & PluginHooks = {} as any;
+  public eventBus?: PluginEventBus;
   protected editor: Editor | null = null;
 
-  constructor(id: string, name: string) {
-    this.id = id;
-    this.name = name;
+  constructor(config: PluginConfig, lifecycle?: PluginLifecycle) {
+    this.id = config.id;
+    this.config = {
+      ...config,
+      enabled: config.enabled ?? true,
+      priority: config.priority ?? 0,
+      options: config.options ?? {},
+    };
+    this.lifecycle = lifecycle;
   }
 
-  public init = (editor: Editor): void | (() => void) => {
+  public setup = (
+    editor: Editor,
+    eventBus: PluginEventBus
+  ): void | (() => void) => {
     this.editor = editor;
+    this.eventBus = eventBus;
+
+    // Register lifecycle hooks with event bus
+    if (this.lifecycle?.onChange) {
+      this.eventBus.on('content:change', this.lifecycle.onChange);
+    }
+    if (this.lifecycle?.onSelectionChange) {
+      this.eventBus.on('selection:change', this.lifecycle.onSelectionChange);
+    }
+    if (this.lifecycle?.onFocus) {
+      this.eventBus.on('editor:focus', this.lifecycle.onFocus);
+    }
+    if (this.lifecycle?.onBlur) {
+      this.eventBus.on('editor:blur', this.lifecycle.onBlur);
+    }
+
+    // Call mount hook
+    if (this.lifecycle?.onMount) {
+      this.lifecycle.onMount(editor);
+    }
+
     return this.destroy;
   };
 
   public destroy = (): void => {
+    // Cleanup lifecycle hooks
+    if (this.eventBus) {
+      if (this.lifecycle?.onChange) {
+        this.eventBus.off('content:change', this.lifecycle.onChange);
+      }
+      if (this.lifecycle?.onSelectionChange) {
+        this.eventBus.off('selection:change', this.lifecycle.onSelectionChange);
+      }
+      if (this.lifecycle?.onFocus) {
+        this.eventBus.off('editor:focus', this.lifecycle.onFocus);
+      }
+      if (this.lifecycle?.onBlur) {
+        this.eventBus.off('editor:blur', this.lifecycle.onBlur);
+      }
+    }
+
+    // Call unmount hook
+    if (this.lifecycle?.onUnmount) {
+      this.lifecycle.onUnmount();
+    }
+
     this.commands = [];
     this.decorations = [];
     this.editor = null;
+    this.eventBus = undefined;
   };
 
-  protected registerCommand(
-    command: Partial<Command> & Pick<Command, 'id' | 'name'>
-  ): void {
-    const fullCommand: Command = {
-      ...command,
-      description: command.description ?? '',
-      category: command.category ?? 'default',
-      isEnabled: command.isEnabled ?? (() => true),
-      execute: command.execute ?? (() => {}),
-    };
-    this.commands.push(fullCommand);
+  public getCommands = (editor: Editor): Command[] => {
+    return this.commands;
+  };
+
+  // Protected helper methods for plugins to use
+  protected emit(event: string, ...args: any[]): void {
+    this.eventBus?.emit(event, ...args);
   }
 
-  protected registerDecoration(
-    decoration: Partial<Decoration> & Pick<Decoration, 'id' | 'range'>
-  ): void {
-    const fullDecoration: Decoration = {
-      ...decoration,
-      type: decoration.type ?? 'inline',
-      attributes: decoration.attributes ?? {},
-      className: decoration.className ?? '',
-    };
-    this.decorations.push(fullDecoration);
+  protected on(event: string, handler: (...args: any[]) => void): void {
+    this.eventBus?.on(event, handler);
   }
+
+  protected off(event: string, handler: (...args: any[]) => void): void {
+    this.eventBus?.off(event, handler);
+  }
+
+  protected registerCommand(command: Command): void {
+    this.commands.push(command);
+  }
+
+  protected addDecoration(decoration: Decoration): void {
+    this.decorations.push(decoration);
+  }
+
+  protected removeDecoration(decorationId: string): void {
+    this.decorations = this.decorations.filter(d => d.id !== decorationId);
+  }
+
+  // Optional hook methods that plugins can override
+  public beforeContentChange?(content: string): string {
+    return content;
+  }
+
+  public afterContentChange?(content: string): void {}
+
+  public beforeFormat?(type: FormatType, selection: Selection): boolean {
+    return true;
+  }
+
+  public afterFormat?(type: FormatType, selection: Selection): void {}
 }
 
-// Helper to create hook-based plugins
-export function createPlugin<T = unknown>(config: {
-  id: string;
-  name: string;
-  initialState: T;
-  setup?: (editor: Editor) => void | (() => void);
-  getCommands?: (editor: Editor, state: T) => Command[];
-  getDecorations?: (editor: Editor, state: T) => Decoration[];
-}): HookPlugin<T> {
+// Helper function to create a plugin config
+export function createPluginConfig(
+  id: string,
+  name: string,
+  version: string,
+  options: Partial<PluginConfig> = {}
+): PluginConfig {
   return {
-    id: config.id,
-    name: config.name,
-
-    usePlugin: (editor: Editor) => {
-      useEffect(() => {
-        return config.setup?.(editor);
-      }, [editor]);
-
-      return {
-        id: config.id,
-        name: config.name,
-        state: config.initialState,
-      };
-    },
-
-    getCommands: (editor: Editor) =>
-      config.getCommands?.(editor, config.initialState) ?? [],
-
-    getDecorations: (editor: Editor) =>
-      config.getDecorations?.(editor, config.initialState) ?? [],
-
-    init: () => {},
-    destroy: () => {},
+    id,
+    name,
+    version,
+    dependencies: options.dependencies,
+    priority: options.priority,
+    enabled: options.enabled ?? true,
+    options: options.options,
   };
 }

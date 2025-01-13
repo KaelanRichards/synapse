@@ -9,15 +9,43 @@ import type {
 } from '../components/editor/types';
 
 import { WritableDraft } from 'immer';
+import type { EnhancedPlugin } from '@/components/editor/types/plugin';
 
 // Base state interface that all slices will extend
-export interface BaseState
-  extends WritableDraft<
-    Omit<EditorState, 'plugins' | 'decorations' | 'commands'>
-  > {
-  plugins: Map<string, Plugin>;
+export interface BaseState {
+  content: string;
+  selection: Selection | null;
+  plugins: Map<string, EnhancedPlugin>;
   decorations: Map<string, Decoration>;
   commands: Map<string, Command>;
+  cleanupFunctions: Map<string, () => void>;
+  undoStack: UndoStackItem[];
+  redoStack: UndoStackItem[];
+  lastUndoTime: number;
+  stats: {
+    wordCount: number;
+    charCount: number;
+    timeSpent: number;
+    linesCount: number;
+    readingTime: number;
+  };
+  saveStatus: 'saved' | 'saving' | 'unsaved';
+  isLocalFocusMode: boolean;
+  isParagraphFocus: boolean;
+  isAmbientSound: boolean;
+  showToolbar: boolean;
+  toolbarPosition: { x: number; y: number };
+  focusMode: {
+    enabled: boolean;
+    hideCommands: boolean;
+    dimSurroundings: boolean;
+  };
+  typewriterMode: {
+    enabled: boolean;
+    sound: boolean;
+    scrollIntoView: boolean;
+  };
+  activeFormats: Set<FormatType>;
 }
 
 // Content slice
@@ -88,24 +116,29 @@ export type UISlice = UIState & UIActions;
 
 // Plugin slice
 export type PluginState = WritableDraft<{
-  plugins: Map<string, Plugin>;
+  plugins: Map<string, EnhancedPlugin>;
   commands: Map<string, Command>;
   decorations: Map<string, Decoration>;
   cleanupFunctions: Map<string, () => void>;
 }>;
 
 export interface PluginActions {
-  registerPlugin: (plugin: Plugin) => void;
+  registerPlugin: (plugin: EnhancedPlugin) => void;
   unregisterPlugin: (pluginId: string) => void;
-  getPlugin: (pluginId: string) => Plugin | undefined;
+  getPlugin: (pluginId: string) => EnhancedPlugin | undefined;
   registerCommand: (command: Command) => void;
   unregisterCommand: (commandId: string) => void;
   executeCommand: (commandId: string, ...args: any[]) => void;
   addDecoration: (decoration: Decoration) => void;
   removeDecoration: (decorationId: string) => void;
   getDecorations: () => Decoration[];
-  updatePluginState: <T>(pluginId: string, state: T) => void;
-  getPluginState: <T>(pluginId: string) => T | undefined;
+  updatePluginState: <T extends Record<string, unknown>>(
+    pluginId: string,
+    state: T
+  ) => void;
+  getPluginState: <T extends Record<string, unknown>>(
+    pluginId: string
+  ) => T | undefined;
 
   // Hook runners
   runBeforeContentChange: (content: string) => string | void;

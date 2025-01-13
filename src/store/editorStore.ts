@@ -8,11 +8,11 @@ import { AutosavePlugin } from '@/components/editor/plugins/AutosavePlugin';
 import { MarkdownPlugin } from '@/components/editor/plugins/MarkdownPlugin';
 import type {
   Command,
-  Plugin,
   Selection,
   UndoStackItem,
   FormatType,
 } from '@/components/editor/types';
+import type { EnhancedPlugin } from '@/components/editor/types/plugin';
 
 enableMapSet();
 
@@ -20,7 +20,7 @@ const useEditorStore = create<EditorStore>()(
   immer((set, get) => ({
     // Initial state
     content: '',
-    selection: null,
+    selection: null as Selection | null,
     plugins: new Map(),
     commands: new Map(),
     decorations: new Map(),
@@ -210,7 +210,20 @@ const useEditorStore = create<EditorStore>()(
           });
         }
 
-        const cleanup = plugin.setup?.(state as any);
+        const cleanup = plugin.setup?.(state as any, {
+          emit: (event: string, ...args: any[]) => {
+            plugin.hooks?.[event]?.(...args);
+          },
+          on: (event: string, handler: any) => {
+            if (!plugin.hooks) plugin.hooks = {};
+            plugin.hooks[event] = handler;
+          },
+          off: (event: string, handler: any) => {
+            if (plugin.hooks?.[event] === handler) {
+              delete plugin.hooks[event];
+            }
+          },
+        });
         if (cleanup) {
           newCleanupFunctions.set(plugin.id, cleanup);
         }
@@ -286,7 +299,7 @@ const useEditorStore = create<EditorStore>()(
 
     getPluginState: pluginId => {
       const plugin = get().plugins.get(pluginId);
-      return plugin?.state;
+      return plugin?.state as any;
     },
 
     // Hook runners
@@ -358,12 +371,14 @@ const useEditorStore = create<EditorStore>()(
         state.decorations = new Map();
 
         // Register plugins
-        [
-          FormatPlugin,
-          SearchReplacePlugin,
-          AutosavePlugin,
-          MarkdownPlugin,
-        ].forEach(plugin => {
+        const plugins: EnhancedPlugin[] = [
+          new FormatPlugin(),
+          new SearchReplacePlugin(),
+          new AutosavePlugin(),
+          new MarkdownPlugin(),
+        ];
+
+        plugins.forEach(plugin => {
           const newPlugins = new Map(state.plugins);
           const newCommands = new Map(state.commands);
           const newCleanupFunctions = new Map(state.cleanupFunctions);
@@ -377,7 +392,20 @@ const useEditorStore = create<EditorStore>()(
             });
           }
 
-          const cleanup = plugin.setup?.(state as any);
+          const cleanup = plugin.setup?.(state as any, {
+            emit: (event: string, ...args: any[]) => {
+              plugin.hooks?.[event]?.(...args);
+            },
+            on: (event: string, handler: any) => {
+              if (!plugin.hooks) plugin.hooks = {};
+              plugin.hooks[event] = handler;
+            },
+            off: (event: string, handler: any) => {
+              if (plugin.hooks?.[event] === handler) {
+                delete plugin.hooks[event];
+              }
+            },
+          });
           if (cleanup) {
             newCleanupFunctions.set(plugin.id, cleanup);
           }
@@ -424,12 +452,14 @@ const useEditorStore = create<EditorStore>()(
         state.selection = null;
 
         // Then initialize
-        [
-          FormatPlugin,
-          SearchReplacePlugin,
-          AutosavePlugin,
-          MarkdownPlugin,
-        ].forEach(plugin => {
+        const plugins: EnhancedPlugin[] = [
+          new FormatPlugin(),
+          new SearchReplacePlugin(),
+          new AutosavePlugin(),
+          new MarkdownPlugin(),
+        ];
+
+        plugins.forEach(plugin => {
           const newPlugins = new Map(state.plugins);
           const newCommands = new Map(state.commands);
           const newCleanupFunctions = new Map(state.cleanupFunctions);
@@ -443,7 +473,20 @@ const useEditorStore = create<EditorStore>()(
             });
           }
 
-          const cleanup = plugin.setup?.(state as any);
+          const cleanup = plugin.setup?.(state as any, {
+            emit: (event: string, ...args: any[]) => {
+              plugin.hooks?.[event]?.(...args);
+            },
+            on: (event: string, handler: any) => {
+              if (!plugin.hooks) plugin.hooks = {};
+              plugin.hooks[event] = handler;
+            },
+            off: (event: string, handler: any) => {
+              if (plugin.hooks?.[event] === handler) {
+                delete plugin.hooks[event];
+              }
+            },
+          });
           if (cleanup) {
             newCleanupFunctions.set(plugin.id, cleanup);
           }

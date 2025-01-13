@@ -22,10 +22,10 @@ const SAVE_DELAY = 1000;
 
 // Initialize plugins
 const defaultPlugins = [
-  SearchReplacePlugin,
-  AutosavePlugin,
-  FormatPlugin,
-  MarkdownPlugin,
+  new SearchReplacePlugin(),
+  new AutosavePlugin(),
+  new FormatPlugin(),
+  new MarkdownPlugin(),
 ];
 
 export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
@@ -78,8 +78,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
       setContent(initialNote.content);
     }
     defaultPlugins.forEach(plugin => {
-      const instance = plugin;
-      useEditorStore.getState().registerPlugin(instance);
+      useEditorStore.getState().registerPlugin(plugin);
     });
     return () => {
       destroy();

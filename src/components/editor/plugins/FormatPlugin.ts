@@ -1,8 +1,10 @@
-import { createPlugin } from './BasePlugin';
+import { BasePlugin, createPluginConfig } from './BasePlugin';
 import type { Editor, FormatType, Selection } from '../types';
+import type { Command } from '../types/plugin';
 
-interface FormatState {
+interface FormatState extends Record<string, unknown> {
   lastFormat: FormatType | null;
+  activeFormats: Set<FormatType>;
 }
 
 const formatTypes: FormatType[] = [
@@ -48,72 +50,111 @@ const getFormatPrefix = (type: FormatType): string => {
   }
 };
 
-const getFormatSuffix = (type: FormatType): string => {
-  switch (type) {
-    case 'bold':
-      return '**';
-    case 'italic':
-      return '_';
-    case 'link':
-      return '](url)';
-    case 'code':
-      return '`';
-    default:
-      return '';
-  }
-};
-
-export const FormatPlugin = createPlugin<FormatState>({
-  id: 'format',
-  name: 'Format',
-
-  initialState: {
-    lastFormat: null,
-  },
-
-  getCommands: (editor: Editor) => {
-    const format = (type: FormatType) => {
-      // Check if editor is still valid
-      if (!editor || !editor.getSelectedText) {
-        console.warn('Editor is no longer valid');
-        return;
-      }
-
-      // Get current selection from the store instead of editor.state
-      const selection = editor.getSelectedText();
-      if (!selection) {
-        console.warn('No text selected for formatting');
-        return;
-      }
-
-      const prefix = getFormatPrefix(type);
-      const suffix = getFormatSuffix(type);
-
-      editor.dispatch({
-        type: 'FORMAT_TEXT',
-        payload: {
-          type,
-          prefix,
-          suffix,
-          selection,
+export class FormatPlugin extends BasePlugin<FormatState> {
+  constructor() {
+    super(
+      createPluginConfig('format', 'Format', '1.0.0', {
+        priority: 1,
+        options: {
+          shortcuts,
+          formatTypes,
         },
+      }),
+      {
+        onMount: editor => {
+          this.state = {
+            lastFormat: null,
+            activeFormats: new Set(),
+          };
+          this.setupCommands();
+        },
+        onChange: (content, prevContent) => {
+          this.updateActiveFormats();
+        },
+        onSelectionChange: selection => {
+          if (selection) {
+            this.updateActiveFormats();
+          }
+        },
+      }
+    );
+  }
+
+  private setupCommands(): void {
+    formatTypes.forEach(type => {
+      this.registerCommand({
+        id: `format:${type}`,
+        name: `Format ${type}`,
+        description: `Format selection with ${type}`,
+        shortcut: shortcuts[type],
+        category: 'format',
+        isEnabled: () => this.editor?.getSelectedText() !== null,
+        execute: () => this.applyFormat(type),
       });
-    };
+    });
+  }
 
-    // Return format commands
-    return formatTypes.map(type => ({
-      id: `format-${type}`,
-      name: type.charAt(0).toUpperCase() + type.slice(1),
-      shortcut: shortcuts[type],
-      category: 'Format',
-      execute: () => format(type),
-    }));
-  },
+  private updateActiveFormats(): void {
+    const selection = this.editor?.getSelectedText();
+    if (!selection) return;
 
-  setup: (editor: Editor) => {
-    console.log('FormatPlugin setup');
-    return () => {
-      console.log('FormatPlugin cleanup');
-    };
-  },
-});
+    const activeFormats = new Set<FormatType>();
+    const { text } = selection;
+
+    formatTypes.forEach(type => {
+      const prefix = getFormatPrefix(type);
+      if (text.startsWith(prefix) && text.endsWith(prefix)) {
+        activeFormats.add(type);
+      }
+    });
+
+    this.state.activeFormats = activeFormats;
+    this.emit('format:active-formats-changed', Array.from(activeFormats));
+  }
+
+  private applyFormat(type: FormatType): void {
+    const selection = this.editor?.getSelectedText();
+    if (!selection) return;
+
+    if (this.beforeFormat?.(type, selection) === false) {
+      return;
+    }
+
+    const prefix = getFormatPrefix(type);
+    const { text } = selection;
+    let newText = text;
+
+    // Toggle format
+    if (text.startsWith(prefix) && text.endsWith(prefix)) {
+      newText = text.slice(prefix.length, -prefix.length);
+    } else {
+      newText = `${prefix}${text}${prefix}`;
+    }
+
+    this.editor?.update(() => {
+      const content = this.editor?.state.content || '';
+      const newContent =
+        content.slice(0, selection.start) +
+        newText +
+        content.slice(selection.end);
+
+      this.editor!.state.content = newContent;
+      this.editor!.state.selection = {
+        start: selection.start,
+        end: selection.start + newText.length,
+        text: newText,
+      };
+    });
+
+    this.state.lastFormat = type;
+    this.afterFormat?.(type, selection);
+  }
+
+  public getActiveFormats(): FormatType[] {
+    return Array.from(this.state.activeFormats);
+  }
+
+  public isFormatActive(type: FormatType): boolean {
+    return this.state.activeFormats.has(type);
+  }
+}

@@ -1,253 +1,263 @@
-import { createPlugin } from './BasePlugin';
+import { BasePlugin, createPluginConfig } from './BasePlugin';
 import type { Editor, Selection } from '../types';
 
-interface SearchReplaceState {
-  isOpen: boolean;
-  searchTerm: string;
-  replaceTerm: string;
-  matches: number[];
-  currentMatch: number;
-  caseSensitive: boolean;
-  useRegex: boolean;
+interface SearchMatch {
+  index: number;
+  length: number;
+  text: string;
 }
 
-export const SearchReplacePlugin = createPlugin<SearchReplaceState>({
-  id: 'search-replace',
-  name: 'Search & Replace',
+interface SearchReplaceState extends Record<string, unknown> {
+  searchTerm: string;
+  replaceTerm: string;
+  matches: SearchMatch[];
+  currentMatchIndex: number;
+  isActive: boolean;
+  isCaseSensitive: boolean;
+  isRegex: boolean;
+}
 
-  initialState: {
-    isOpen: false,
-    searchTerm: '',
-    replaceTerm: '',
-    matches: [],
-    currentMatch: -1,
-    caseSensitive: false,
-    useRegex: false,
-  },
-
-  setup: (editor: Editor) => {
-    let pluginState = {
-      isOpen: false,
-      searchTerm: '',
-      replaceTerm: '',
-      matches: [] as number[],
-      currentMatch: -1,
-      caseSensitive: false,
-      useRegex: false,
-    };
-
-    const updateState = (newState: Partial<SearchReplaceState>) => {
-      pluginState = { ...pluginState, ...newState };
-      return pluginState;
-    };
-
-    const createSearchRegex = (searchTerm: string): RegExp => {
-      const flags = pluginState.caseSensitive ? 'g' : 'gi';
-      return pluginState.useRegex
-        ? new RegExp(searchTerm, flags)
-        : new RegExp(searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), flags);
-    };
-
-    const findMatches = (searchTerm: string): number[] => {
-      if (!searchTerm) return [];
-      const regex = createSearchRegex(searchTerm);
-      const matches: number[] = [];
-      let match;
-      while ((match = regex.exec(editor.state.content)) !== null) {
-        matches.push(match.index);
-      }
-      return matches;
-    };
-
-    const selectMatch = (index: number) => {
-      if (index >= 0 && index < pluginState.matches.length) {
-        const matchStart = pluginState.matches[index];
-        const matchEnd = matchStart + pluginState.searchTerm.length;
-        editor.state.selection = {
-          start: matchStart,
-          end: matchEnd,
-          text: editor.state.content.slice(matchStart, matchEnd),
-        };
-        updateState({ currentMatch: index });
-      }
-    };
-
-    // Register commands
-    editor.registerCommand({
-      id: 'toggle-search',
-      name: 'Toggle Search',
-      shortcut: '⌘F',
-      category: 'Search',
-      execute: () => {
-        const isOpen = !pluginState.isOpen;
-        if (isOpen && editor.state.selection) {
-          const searchTerm = editor.state.selection.text;
-          const matches = findMatches(searchTerm);
-          updateState({
-            isOpen,
-            searchTerm,
-            matches,
-            currentMatch: matches.length > 0 ? 0 : -1,
-          });
-          if (matches.length > 0) {
-            selectMatch(0);
+export class SearchReplacePlugin extends BasePlugin<SearchReplaceState> {
+  constructor() {
+    super(
+      createPluginConfig('search-replace', 'Search & Replace', '1.0.0', {
+        priority: 1,
+        options: {
+          defaultCaseSensitive: false,
+          defaultRegex: false,
+        },
+      }),
+      {
+        onMount: editor => {
+          this.state = {
+            searchTerm: '',
+            replaceTerm: '',
+            matches: [],
+            currentMatchIndex: -1,
+            isActive: false,
+            isCaseSensitive: false,
+            isRegex: false,
+          };
+          this.setupCommands();
+        },
+        onChange: content => {
+          if (this.state.isActive && this.state.searchTerm) {
+            this.updateMatches();
           }
-        } else {
-          updateState({ isOpen });
-        }
-      },
+        },
+      }
+    );
+  }
+
+  private setupCommands(): void {
+    this.registerCommand({
+      id: 'search',
+      name: 'Search',
+      description: 'Search in document',
+      shortcut: '⌘F',
+      category: 'search',
+      execute: () => this.toggleSearch(),
     });
 
-    editor.registerCommand({
+    this.registerCommand({
       id: 'find-next',
       name: 'Find Next',
+      description: 'Go to next match',
       shortcut: '⌘G',
-      category: 'Search',
-      execute: () => {
-        if (pluginState.matches.length > 0) {
-          const nextMatch =
-            (pluginState.currentMatch + 1) % pluginState.matches.length;
-          selectMatch(nextMatch);
-        }
-      },
+      category: 'search',
+      isEnabled: () => this.state.matches.length > 0,
+      execute: () => this.findNext(),
     });
 
-    editor.registerCommand({
+    this.registerCommand({
       id: 'find-previous',
       name: 'Find Previous',
-      shortcut: '⌘⇧G',
-      category: 'Search',
-      execute: () => {
-        if (pluginState.matches.length > 0) {
-          const prevMatch =
-            pluginState.currentMatch > 0
-              ? pluginState.currentMatch - 1
-              : pluginState.matches.length - 1;
-          selectMatch(prevMatch);
-        }
-      },
+      description: 'Go to previous match',
+      shortcut: '⇧⌘G',
+      category: 'search',
+      isEnabled: () => this.state.matches.length > 0,
+      execute: () => this.findPrevious(),
     });
 
-    editor.registerCommand({
+    this.registerCommand({
       id: 'replace',
       name: 'Replace',
-      category: 'Search',
-      execute: () => {
-        if (pluginState.currentMatch >= 0) {
-          const matchStart = pluginState.matches[pluginState.currentMatch];
-          const matchEnd = matchStart + pluginState.searchTerm.length;
-          const beforeMatch = editor.state.content.slice(0, matchStart);
-          const afterMatch = editor.state.content.slice(matchEnd);
-          const newContent = beforeMatch + pluginState.replaceTerm + afterMatch;
-
-          // Update editor content
-          editor.state.content = newContent;
-
-          // Update matches after replace
-          const newMatches = findMatches(pluginState.searchTerm);
-          updateState({
-            matches: newMatches,
-            currentMatch: Math.min(
-              pluginState.currentMatch,
-              newMatches.length - 1
-            ),
-          });
-        }
-      },
+      description: 'Replace current match',
+      shortcut: '⌘H',
+      category: 'search',
+      isEnabled: () => this.state.currentMatchIndex >= 0,
+      execute: () => this.replaceCurrent(),
     });
 
-    editor.registerCommand({
+    this.registerCommand({
       id: 'replace-all',
       name: 'Replace All',
-      category: 'Search',
-      execute: () => {
-        if (pluginState.searchTerm) {
-          const regex = createSearchRegex(pluginState.searchTerm);
-          editor.state.content = editor.state.content.replace(
-            regex,
-            pluginState.replaceTerm
-          );
-          updateState({
-            matches: [],
-            currentMatch: -1,
-          });
-        }
-      },
+      description: 'Replace all matches',
+      shortcut: '⇧⌘H',
+      category: 'search',
+      isEnabled: () => this.state.matches.length > 0,
+      execute: () => this.replaceAll(),
     });
+  }
 
-    editor.registerCommand({
-      id: 'toggle-case-sensitive',
-      name: 'Toggle Case Sensitive',
-      category: 'Search',
-      execute: () => {
-        const caseSensitive = !pluginState.caseSensitive;
-        const matches = findMatches(pluginState.searchTerm);
-        updateState({
-          caseSensitive,
-          matches,
-          currentMatch: matches.length > 0 ? 0 : -1,
-        });
-        if (matches.length > 0) {
-          selectMatch(0);
-        }
-      },
-    });
+  private toggleSearch(): void {
+    this.state.isActive = !this.state.isActive;
+    this.emit('search:toggle', this.state.isActive);
 
-    editor.registerCommand({
-      id: 'toggle-regex',
-      name: 'Toggle Regex',
-      category: 'Search',
-      execute: () => {
-        const useRegex = !pluginState.useRegex;
-        const matches = findMatches(pluginState.searchTerm);
-        updateState({
-          useRegex,
-          matches,
-          currentMatch: matches.length > 0 ? 0 : -1,
-        });
-        if (matches.length > 0) {
-          selectMatch(0);
-        }
-      },
-    });
+    if (this.state.isActive) {
+      const selection = this.editor?.getSelectedText();
+      if (selection && selection.text) {
+        this.search(selection.text);
+      }
+    }
+  }
 
-    editor.registerCommand({
-      id: 'setSearchTerm',
-      name: 'Set Search Term',
-      category: 'Search',
-      execute: (term: string) => {
-        const matches = findMatches(term);
-        updateState({
-          searchTerm: term,
-          matches,
-          currentMatch: matches.length > 0 ? 0 : -1,
-        });
-        if (matches.length > 0) {
-          selectMatch(0);
-        }
-      },
-    });
+  public search(term: string): void {
+    this.state.searchTerm = term;
+    this.updateMatches();
+  }
 
-    editor.registerCommand({
-      id: 'setReplaceTerm',
-      name: 'Set Replace Term',
-      category: 'Search',
-      execute: (term: string) => {
-        updateState({ replaceTerm: term });
-      },
-    });
+  private updateMatches(): void {
+    if (!this.editor) return;
 
-    // Return cleanup function
-    return () => {
-      pluginState = {
-        isOpen: false,
-        searchTerm: '',
-        replaceTerm: '',
-        matches: [],
-        currentMatch: -1,
-        caseSensitive: false,
-        useRegex: false,
-      };
+    const content = this.editor.state.content;
+    const matches: SearchMatch[] = [];
+
+    if (!this.state.searchTerm) {
+      this.state.matches = [];
+      this.state.currentMatchIndex = -1;
+      return;
+    }
+
+    let searchRegex: RegExp;
+    if (this.state.isRegex) {
+      try {
+        searchRegex = new RegExp(
+          this.state.searchTerm,
+          this.state.isCaseSensitive ? 'g' : 'gi'
+        );
+      } catch (e) {
+        this.emit('search:error', 'Invalid regex pattern');
+        return;
+      }
+    } else {
+      const escaped = this.state.searchTerm.replace(
+        /[.*+?^${}()|[\]\\]/g,
+        '\\$&'
+      );
+      searchRegex = new RegExp(
+        escaped,
+        this.state.isCaseSensitive ? 'g' : 'gi'
+      );
+    }
+
+    let match;
+    while ((match = searchRegex.exec(content)) !== null) {
+      matches.push({
+        index: match.index,
+        length: match[0].length,
+        text: match[0],
+      });
+    }
+
+    this.state.matches = matches;
+    this.emit('search:matches-updated', matches);
+
+    // Keep current match if still valid
+    if (this.state.currentMatchIndex >= matches.length) {
+      this.state.currentMatchIndex = matches.length > 0 ? 0 : -1;
+    }
+
+    if (this.state.currentMatchIndex >= 0) {
+      this.highlightMatch(this.state.currentMatchIndex);
+    }
+  }
+
+  private highlightMatch(index: number): void {
+    if (!this.editor || index < 0 || index >= this.state.matches.length) return;
+
+    const match = this.state.matches[index];
+    this.editor.state.selection = {
+      start: match.index,
+      end: match.index + match.length,
+      text: match.text,
     };
-  },
-});
+
+    this.state.currentMatchIndex = index;
+    this.emit('search:current-match', index);
+  }
+
+  private findNext(): void {
+    const nextIndex =
+      this.state.currentMatchIndex < this.state.matches.length - 1
+        ? this.state.currentMatchIndex + 1
+        : 0;
+    this.highlightMatch(nextIndex);
+  }
+
+  private findPrevious(): void {
+    const prevIndex =
+      this.state.currentMatchIndex > 0
+        ? this.state.currentMatchIndex - 1
+        : this.state.matches.length - 1;
+    this.highlightMatch(prevIndex);
+  }
+
+  private replaceCurrent(): void {
+    if (!this.editor || this.state.currentMatchIndex < 0) return;
+
+    const match = this.state.matches[this.state.currentMatchIndex];
+    const content = this.editor.state.content;
+
+    const newContent =
+      content.slice(0, match.index) +
+      this.state.replaceTerm +
+      content.slice(match.index + match.length);
+
+    this.editor.state.content = newContent;
+    this.updateMatches();
+  }
+
+  private replaceAll(): void {
+    if (!this.editor || !this.state.matches.length) return;
+
+    let content = this.editor.state.content;
+    let offset = 0;
+
+    for (const match of this.state.matches) {
+      const adjustedIndex = match.index - offset;
+      content =
+        content.slice(0, adjustedIndex) +
+        this.state.replaceTerm +
+        content.slice(adjustedIndex + match.length);
+
+      offset += match.length - this.state.replaceTerm.length;
+    }
+
+    this.editor.state.content = content;
+    this.updateMatches();
+  }
+
+  public setSearchTerm(term: string): void {
+    this.state.searchTerm = term;
+    this.updateMatches();
+  }
+
+  public setReplaceTerm(term: string): void {
+    this.state.replaceTerm = term;
+  }
+
+  public setCaseSensitive(isCaseSensitive: boolean): void {
+    this.state.isCaseSensitive = isCaseSensitive;
+    this.updateMatches();
+  }
+
+  public setRegex(isRegex: boolean): void {
+    this.state.isRegex = isRegex;
+    this.updateMatches();
+  }
+
+  public getState(): SearchReplaceState {
+    return { ...this.state };
+  }
+}

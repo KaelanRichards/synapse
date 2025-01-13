@@ -1,76 +1,82 @@
-import { createPlugin } from './BasePlugin';
+import { BasePlugin, createPluginConfig } from './BasePlugin';
 import type { Editor } from '../types';
 
-interface AutosaveState {
-  lastSaveTime: number;
-  isDirty: boolean;
+interface AutosaveState extends Record<string, unknown> {
+  lastSavedContent: string | null;
   isSaving: boolean;
+  saveTimeout: number | null;
 }
 
-const AUTOSAVE_DELAY = 2000; // 2 seconds
+export class AutosavePlugin extends BasePlugin<AutosaveState> {
+  private readonly SAVE_DELAY = 1000; // 1 second delay
 
-export const AutosavePlugin = createPlugin<AutosaveState>({
-  id: 'autosave',
-  name: 'Autosave',
-
-  initialState: {
-    lastSaveTime: Date.now(),
-    isDirty: false,
-    isSaving: false,
-  },
-
-  setup: (editor: Editor) => {
-    let saveTimeout: NodeJS.Timeout;
-
-    const handleContentChange = () => {
-      if (saveTimeout) {
-        clearTimeout(saveTimeout);
-      }
-
-      saveTimeout = setTimeout(async () => {
-        if (editor.state.content) {
-          editor.state.saveStatus = 'saving';
-          try {
-            // Implement your save logic here
-            await editor.save?.();
-            editor.state.saveStatus = 'saved';
-          } catch (error) {
-            editor.state.saveStatus = 'error';
-            console.error('Autosave failed:', error);
+  constructor() {
+    super(
+      createPluginConfig('autosave', 'Autosave', '1.0.0', {
+        priority: 2,
+        options: {
+          saveDelay: 1000,
+        },
+      }),
+      {
+        onMount: editor => {
+          this.state = {
+            lastSavedContent: null,
+            isSaving: false,
+            saveTimeout: null,
+          };
+        },
+        onChange: (content, prevContent) => {
+          this.scheduleSave();
+        },
+        onUnmount: () => {
+          if (this.state.saveTimeout) {
+            window.clearTimeout(this.state.saveTimeout);
           }
-        }
-      }, AUTOSAVE_DELAY);
-    };
-
-    // Subscribe to content changes
-    editor.on('change', handleContentChange);
-
-    return () => {
-      if (saveTimeout) {
-        clearTimeout(saveTimeout);
+        },
       }
-      editor.off('change', handleContentChange);
-    };
-  },
+    );
+  }
 
-  getCommands: editor => [
-    {
-      id: 'save',
-      name: 'Save',
-      description: 'Save the current document',
-      category: 'File',
-      execute: async () => {
-        if (editor.state.content) {
-          editor.state.saveStatus = 'saving';
-          try {
-            await editor.save?.();
-            editor.state.saveStatus = 'saved';
-          } catch (error) {
-            editor.state.saveStatus = 'error';
-            console.error('Save failed:', error);
-          }
-        }
-      },
-    },
-  ],
-});
+  private scheduleSave(): void {
+    if (this.state.saveTimeout) {
+      window.clearTimeout(this.state.saveTimeout);
+    }
+
+    const timeout = window.setTimeout(() => {
+      this.save();
+    }, this.SAVE_DELAY);
+
+    this.state.saveTimeout = timeout;
+  }
+
+  private async save(): Promise<void> {
+    if (!this.editor || this.state.isSaving) return;
+
+    const content = this.editor.state.content;
+    if (content === this.state.lastSavedContent) return;
+
+    this.state.isSaving = true;
+    this.emit('autosave:saving');
+
+    try {
+      // Simulate save - replace with actual save logic
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      this.state.lastSavedContent = content;
+      this.emit('autosave:saved');
+    } catch (error) {
+      this.emit('autosave:error', error);
+    } finally {
+      this.state.isSaving = false;
+    }
+  }
+
+  public isSaving(): boolean {
+    return this.state.isSaving;
+  }
+
+  public getLastSavedContent(): string | null {
+    return this.state.lastSavedContent;
+  }
+}

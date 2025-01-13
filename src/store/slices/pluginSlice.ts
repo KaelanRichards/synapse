@@ -1,7 +1,6 @@
 import { StateCreator } from 'zustand';
 import type { EditorStore } from '../types';
 import type {
-  Plugin,
   Command,
   Decoration,
   FormatType,
@@ -9,17 +8,18 @@ import type {
   Editor,
   EditorState,
 } from '../../components/editor/types';
+import type { EnhancedPlugin } from '@/components/editor/types/plugin';
 
 export interface PluginSlice {
   // State
-  plugins: Map<string, Plugin>;
+  plugins: Map<string, EnhancedPlugin>;
   commands: Map<string, Command>;
   decorations: Map<string, Decoration>;
 
   // Plugin actions
-  registerPlugin: (plugin: Plugin) => void;
+  registerPlugin: (plugin: EnhancedPlugin) => void;
   unregisterPlugin: (pluginId: string) => void;
-  getPlugin: (pluginId: string) => Plugin | undefined;
+  getPlugin: (pluginId: string) => EnhancedPlugin | undefined;
 
   // Command actions
   registerCommand: (command: Command) => void;
@@ -82,12 +82,14 @@ export const createPluginSlice: StateCreator<
   PluginSlice
 > = (set, get) => {
   // Use a WeakMap to store plugin states to avoid memory leaks
-  const pluginStates = new WeakMap<Plugin, unknown>();
+  const pluginStates = new WeakMap<EnhancedPlugin, unknown>();
 
-  const runPluginHooks = <T extends keyof NonNullable<Plugin['hooks']>>(
+  const runPluginHooks = <T extends keyof NonNullable<EnhancedPlugin['hooks']>>(
     hookName: T,
-    ...args: Parameters<NonNullable<NonNullable<Plugin['hooks']>[T]>>
-  ): ReturnType<NonNullable<NonNullable<Plugin['hooks']>[T]>> | undefined => {
+    ...args: Parameters<NonNullable<NonNullable<EnhancedPlugin['hooks']>[T]>>
+  ):
+    | ReturnType<NonNullable<NonNullable<EnhancedPlugin['hooks']>[T]>>
+    | undefined => {
     let result: any = args[0];
     const plugins = Array.from(get().plugins.values());
 
@@ -162,7 +164,12 @@ export const createPluginSlice: StateCreator<
       pluginStates.set(plugin, {});
 
       // Now that the plugin is registered, initialize it
-      const cleanup = plugin.init?.(createEditorAdapter(get()));
+      const eventBus = {
+        emit: (event: string, ...args: any[]) => {},
+        on: (event: string, handler: (...args: any[]) => void) => {},
+        off: (event: string, handler: (...args: any[]) => void) => {},
+      };
+      const cleanup = plugin.init?.(createEditorAdapter(get()), eventBus);
 
       // If there's a cleanup function, store it in a separate update
       if (cleanup) {

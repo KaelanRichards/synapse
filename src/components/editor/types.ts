@@ -1,3 +1,5 @@
+import type { EnhancedPlugin } from './types/plugin';
+
 export type SaveStatus = 'saved' | 'saving' | 'unsaved' | 'error';
 
 export interface EditorStats {
@@ -62,30 +64,23 @@ export interface Decoration {
 // Editor Core Types
 export interface Editor {
   id: string;
-  plugins: Map<string, Plugin>;
+  plugins: Map<string, EnhancedPlugin>;
   commands: Map<string, Command>;
   decorations: Map<string, Decoration>;
   cleanupFunctions: Map<string, () => void>;
   state: EditorState;
   dispatch: (action: any) => void;
-  subscribe: (listener: (state: EditorState) => void) => () => void;
-  registerPlugin: (plugin: Plugin) => void;
+  subscribe: (listener: () => void) => () => void;
+  registerPlugin: (plugin: EnhancedPlugin) => void;
   unregisterPlugin: (pluginId: string) => void;
   registerCommand: (command: Command) => void;
-  executeCommand: (commandId: string) => void;
+  executeCommand: (commandId: string, ...args: any[]) => void;
   addDecoration: (decoration: Decoration) => void;
   removeDecoration: (decorationId: string) => void;
-  save?: () => Promise<void>;
   on: (event: string, handler: (...args: any[]) => void) => void;
   off: (event: string, handler: (...args: any[]) => void) => void;
   update: (updater: () => void) => void;
   getSelectedText: () => Selection | null;
-  hooks?: {
-    beforeContentChange?: (content: string) => string;
-    afterContentChange?: (content: string) => void;
-    beforeFormat?: (type: FormatType, selection: Selection) => boolean;
-    afterFormat?: (type: FormatType, selection: Selection) => void;
-  };
 }
 
 export type FormatType =
@@ -119,7 +114,7 @@ export interface AutosavePluginState {
 export interface EditorState {
   content: string;
   selection: Selection | null;
-  plugins: Map<string, Plugin>;
+  plugins: Map<string, EnhancedPlugin>;
   commands: Map<string, Command>;
   decorations: Map<string, Decoration>;
   undoStack: UndoStackItem[];
