@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import { useNote } from '@/hooks/useNote';
 import { useAuth } from '@/contexts/AuthContext';
 import { NextPage } from 'next';
+import NoteEditor from '@/components/NoteEditor';
 
 const NoteDetail: NextPage = () => {
   const { session } = useAuth();
@@ -33,12 +34,7 @@ const NoteDetail: NextPage = () => {
     return <div className="p-4">Note not found</div>;
   }
 
-  return (
-    <div className="p-4">
-      <h1 className="text-2xl font-bold mb-4">{note.title}</h1>
-      <div className="prose dark:prose-invert max-w-none">{note.content}</div>
-    </div>
-  );
+  return <NoteEditor initialNote={note} />;
 };
 
 export default NoteDetail;
