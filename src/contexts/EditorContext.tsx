@@ -3,8 +3,11 @@ import React, {
   useContext,
   useReducer,
   useCallback,
+  useEffect,
 } from 'react';
 import { useNoteMutations } from '@/hooks/useNoteMutations';
+import { useSupabase } from '@/contexts/SupabaseContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface EditorState {
   mode: 'default' | 'focus';
@@ -36,9 +39,10 @@ type EditorAction =
   | {
       type: 'SET_TYPEWRITER_MODE';
       payload: Partial<EditorState['typewriterMode']>;
-    };
+    }
+  | { type: 'LOAD_SAVED_STATE'; payload: EditorState };
 
-const initialState: EditorState = {
+const defaultState: EditorState = {
   mode: 'default',
   fontFamily: 'serif',
   fontSize: 16,
@@ -57,36 +61,72 @@ const initialState: EditorState = {
   },
 };
 
+// Load initial state from localStorage or use default
+const loadSavedState = (): EditorState => {
+  if (typeof window === 'undefined') return defaultState;
+
+  const saved = localStorage.getItem('editorSettings');
+  if (!saved) return defaultState;
+
+  try {
+    const parsed = JSON.parse(saved);
+    return { ...defaultState, ...parsed };
+  } catch (e) {
+    console.error('Failed to parse saved editor settings:', e);
+    return defaultState;
+  }
+};
+
 const editorReducer = (
   state: EditorState,
   action: EditorAction
 ): EditorState => {
+  let newState: EditorState;
+
   switch (action.type) {
     case 'SET_MODE':
-      return { ...state, mode: action.payload };
+      newState = { ...state, mode: action.payload };
+      break;
     case 'SET_FONT_FAMILY':
-      return { ...state, fontFamily: action.payload };
+      newState = { ...state, fontFamily: action.payload };
+      break;
     case 'SET_FONT_SIZE':
-      return { ...state, fontSize: action.payload };
+      newState = { ...state, fontSize: action.payload };
+      break;
     case 'SET_THEME':
-      return { ...state, theme: action.payload };
+      newState = { ...state, theme: action.payload };
+      break;
     case 'TOGGLE_SOUND':
-      return { ...state, soundEnabled: !state.soundEnabled };
+      newState = { ...state, soundEnabled: !state.soundEnabled };
+      break;
     case 'TOGGLE_AUTO_SAVE':
-      return { ...state, autoSave: !state.autoSave };
+      newState = { ...state, autoSave: !state.autoSave };
+      break;
     case 'SET_FOCUS_MODE':
-      return {
+      newState = {
         ...state,
         focusMode: { ...state.focusMode, ...action.payload },
       };
+      break;
     case 'SET_TYPEWRITER_MODE':
-      return {
+      newState = {
         ...state,
         typewriterMode: { ...state.typewriterMode, ...action.payload },
       };
+      break;
+    case 'LOAD_SAVED_STATE':
+      newState = action.payload;
+      break;
     default:
       return state;
   }
+
+  // Save to localStorage after each change
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('editorSettings', JSON.stringify(newState));
+  }
+
+  return newState;
 };
 
 interface EditorContextType {
@@ -104,7 +144,99 @@ interface EditorContextType {
 const EditorContext = createContext<EditorContextType | undefined>(undefined);
 
 export function EditorProvider({ children }: { children: React.ReactNode }) {
-  const [state, dispatch] = useReducer(editorReducer, initialState);
+  const [state, dispatch] = useReducer(editorReducer, defaultState);
+  const supabase = useSupabase();
+  const { user } = useAuth();
+
+  // Load settings from database or localStorage
+  useEffect(() => {
+    async function loadSettings() {
+      if (!user) {
+        const localState = loadSavedState();
+        dispatch({ type: 'LOAD_SAVED_STATE', payload: localState });
+        return;
+      }
+
+      try {
+        // Try to load from database first
+        const { data, error } = await supabase
+          .from('user_settings')
+          .select('editor_settings')
+          .eq('user_id', user.id)
+          .single();
+
+        if (error) {
+          throw error;
+        }
+
+        if (data?.editor_settings) {
+          dispatch({
+            type: 'LOAD_SAVED_STATE',
+            payload: { ...defaultState, ...data.editor_settings },
+          });
+        } else {
+          // If no settings in DB, try localStorage
+          const localState = loadSavedState();
+          dispatch({ type: 'LOAD_SAVED_STATE', payload: localState });
+
+          // Save localStorage settings to DB if they exist
+          if (localState !== defaultState) {
+            await supabase.from('user_settings').upsert({
+              user_id: user.id,
+              editor_settings: localState,
+            });
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load settings from database:', err);
+        // Fallback to localStorage
+        const localState = loadSavedState();
+        dispatch({ type: 'LOAD_SAVED_STATE', payload: localState });
+      }
+    }
+
+    loadSettings();
+  }, [user, supabase]);
+
+  // Save settings to database when they change
+  useEffect(() => {
+    async function saveSettings() {
+      if (!user) return;
+
+      try {
+        const { error } = await supabase.from('user_settings').upsert({
+          user_id: user.id,
+          editor_settings: state,
+        });
+
+        if (error) throw error;
+      } catch (err) {
+        console.error('Failed to save settings to database:', err);
+      }
+    }
+
+    // Debounce save to avoid too many database calls
+    const timeoutId = setTimeout(saveSettings, 1000);
+    return () => clearTimeout(timeoutId);
+  }, [state, user, supabase]);
+
+  // Apply theme to document
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const root = window.document.documentElement;
+    const systemTheme = window.matchMedia('(prefers-color-scheme: dark)')
+      .matches
+      ? 'dark'
+      : 'light';
+    const theme = state.theme === 'system' ? systemTheme : state.theme;
+
+    if (theme === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+  }, [state.theme]);
 
   const setMode = useCallback((mode: EditorState['mode']) => {
     dispatch({ type: 'SET_MODE', payload: mode });
