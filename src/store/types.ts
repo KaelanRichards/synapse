@@ -29,21 +29,8 @@ export interface BaseState {
     readingTime: number;
   };
   saveStatus: 'saved' | 'saving' | 'unsaved';
-  isLocalFocusMode: boolean;
-  isParagraphFocus: boolean;
-  isAmbientSound: boolean;
   showToolbar: boolean;
   toolbarPosition: { x: number; y: number };
-  focusMode: {
-    enabled: boolean;
-    hideCommands: boolean;
-    dimSurroundings: boolean;
-  };
-  typewriterMode: {
-    enabled: boolean;
-    sound: boolean;
-    scrollIntoView: boolean;
-  };
   activeFormats: Set<FormatType>;
 }
 
@@ -80,29 +67,17 @@ export interface FormatActions {
   toggleItalic: () => void;
   toggleCode: () => void;
   createLink: (url: string) => void;
-  createHeading: (level: 1 | 2 | 3 | 4 | 5 | 6) => void;
-  createList: (ordered: boolean) => void;
-  createQuote: () => void;
 }
 
 export type FormatSlice = FormatState & FormatActions;
 
 // Editor UI slice (editor-specific UI state)
 export type UIState = WritableDraft<{
-  isLocalFocusMode: boolean;
-  isParagraphFocus: boolean;
-  isAmbientSound: boolean;
   showToolbar: boolean;
   toolbarPosition: { x: number; y: number };
-  typewriterMode: {
-    enabled: boolean;
-    sound: boolean;
-    scrollIntoView: boolean;
-  };
 }>;
 
 export interface UIActions {
-  toggleAmbientSound: () => void;
   setToolbarPosition: (position: { x: number; y: number }) => void;
   setShowToolbar: (show: boolean) => void;
 }
@@ -168,10 +143,23 @@ export type HistorySlice = HistoryState & HistoryActions;
 export interface EditorActions {
   initialize: () => void;
   destroy: () => void;
-  reset: () => void;
-  handleKeyDown: (event: KeyboardEvent) => void;
-  handlePaste: (event: ClipboardEvent) => void;
-  handleDrop: (event: DragEvent) => void;
+  setContent: (content: string) => void;
+  setSelection: (selection: Selection | null) => void;
+  format: (type: FormatType, selection: Selection) => void;
+  toggleBold: () => void;
+  toggleItalic: () => void;
+  toggleCode: () => void;
+  createLink: (url: string) => void;
+  setToolbarPosition: (position: { x: number; y: number }) => void;
+  setShowToolbar: (show: boolean) => void;
+  registerPlugin: (plugin: Plugin) => void;
+  unregisterPlugin: (pluginId: string) => void;
+  registerCommand: (command: Command) => void;
+  unregisterCommand: (commandId: string) => void;
+  registerDecoration: (decoration: Decoration) => void;
+  unregisterDecoration: (decorationId: string) => void;
+  undo: () => void;
+  redo: () => void;
 }
 
 // Complete editor store type

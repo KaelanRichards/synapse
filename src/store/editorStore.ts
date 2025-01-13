@@ -4,16 +4,38 @@ import { enableMapSet } from 'immer';
 import type { EditorStore } from './types';
 import { AutosavePlugin } from '@/components/editor/plugins/AutosavePlugin';
 import { FormatPlugin } from '@/components/editor/plugins/FormatPlugin';
-import { MarkdownPlugin } from '@/components/editor/plugins/MarkdownPlugin';
 import type {
   Command,
   Selection,
   UndoStackItem,
   FormatType,
+  Decoration,
 } from '@/components/editor/types';
 import type { Plugin } from '@/components/editor/types/plugin';
 
 enableMapSet();
+
+export interface EditorState {
+  content: string;
+  selection: Selection | null;
+  plugins: Map<string, Plugin>;
+  commands: Map<string, Command>;
+  decorations: Map<string, Decoration>;
+  undoStack: UndoStackItem[];
+  redoStack: UndoStackItem[];
+  lastUndoTime: number;
+  stats: {
+    wordCount: number;
+    charCount: number;
+    timeSpent: number;
+    linesCount: number;
+    readingTime: number;
+  };
+  saveStatus: 'saved' | 'saving' | 'error' | 'unsaved';
+  showToolbar: boolean;
+  toolbarPosition: { x: number; y: number };
+  activeFormats: Set<FormatType>;
+}
 
 const useEditorStore = create<EditorStore>()(
   immer((set, get) => ({
@@ -35,21 +57,8 @@ const useEditorStore = create<EditorStore>()(
       readingTime: 0,
     },
     saveStatus: 'saved',
-    isLocalFocusMode: false,
-    isParagraphFocus: false,
-    isAmbientSound: false,
     showToolbar: false,
     toolbarPosition: { x: 0, y: 0 },
-    focusMode: {
-      enabled: false,
-      hideCommands: false,
-      dimSurroundings: false,
-    },
-    typewriterMode: {
-      enabled: false,
-      sound: false,
-      scrollIntoView: true,
-    },
     activeFormats: new Set(),
 
     // Actions
@@ -149,24 +158,8 @@ const useEditorStore = create<EditorStore>()(
       const state = get();
       if (state.selection) state.format('link', state.selection);
     },
-    createHeading: level => {
-      const state = get();
-      if (state.selection) state.format('heading', state.selection);
-    },
-    createList: ordered => {
-      const state = get();
-      if (state.selection) state.format('list', state.selection);
-    },
-    createQuote: () => {
-      const state = get();
-      if (state.selection) state.format('quote', state.selection);
-    },
 
     // UI actions
-    toggleAmbientSound: () =>
-      set(state => {
-        state.isAmbientSound = !state.isAmbientSound;
-      }),
     setToolbarPosition: position =>
       set(state => {
         state.toolbarPosition = position;
@@ -354,11 +347,7 @@ const useEditorStore = create<EditorStore>()(
         state.decorations = new Map();
 
         // Register plugins
-        const plugins: Plugin[] = [
-          new AutosavePlugin(),
-          new FormatPlugin(),
-          new MarkdownPlugin(),
-        ];
+        const plugins: Plugin[] = [new AutosavePlugin(), new FormatPlugin()];
 
         plugins.forEach(plugin => {
           const newPlugins = new Map(state.plugins);
@@ -434,11 +423,7 @@ const useEditorStore = create<EditorStore>()(
         state.selection = null;
 
         // Then initialize
-        const plugins: Plugin[] = [
-          new AutosavePlugin(),
-          new FormatPlugin(),
-          new MarkdownPlugin(),
-        ];
+        const plugins: Plugin[] = [new AutosavePlugin(), new FormatPlugin()];
 
         plugins.forEach(plugin => {
           const newPlugins = new Map(state.plugins);
@@ -479,7 +464,7 @@ const useEditorStore = create<EditorStore>()(
       }),
 
     // Event handlers
-    handleKeyDown: event => {
+    handleKeyDown: (event: KeyboardEvent) => {
       const state = get();
       const { key, ctrlKey, metaKey } = event;
 
@@ -512,7 +497,7 @@ const useEditorStore = create<EditorStore>()(
       }
     },
 
-    handlePaste: event => {
+    handlePaste: (event: ClipboardEvent) => {
       event.preventDefault();
       const text = event.clipboardData?.getData('text/plain');
       if (!text) return;
@@ -524,7 +509,7 @@ const useEditorStore = create<EditorStore>()(
       state.insertText(text);
     },
 
-    handleDrop: event => {
+    handleDrop: (event: DragEvent) => {
       event.preventDefault();
       const text = event.dataTransfer?.getData('text/plain');
       if (!text) return;
@@ -603,6 +588,20 @@ const useEditorStore = create<EditorStore>()(
           console.warn(`Unknown action type: ${action.type}`);
       }
     },
+
+    registerDecoration: decoration =>
+      set(state => {
+        const newDecorations = new Map(state.decorations);
+        newDecorations.set(decoration.id, decoration);
+        state.decorations = newDecorations;
+      }),
+
+    unregisterDecoration: decorationId =>
+      set(state => {
+        const newDecorations = new Map(state.decorations);
+        newDecorations.delete(decorationId);
+        state.decorations = newDecorations;
+      }),
   }))
 );
 

@@ -69,11 +69,8 @@ export interface Editor {
 export type FormatType =
   | 'bold'
   | 'italic'
-  | 'heading'
   | 'link'
   | 'code'
-  | 'quote'
-  | 'list'
   | 'table'
   | 'image';
 
@@ -101,7 +98,6 @@ export interface EditorState {
     readingTime: number;
   };
   saveStatus: 'saved' | 'saving' | 'error' | 'unsaved';
-  isAmbientSound: boolean;
   showToolbar: boolean;
   toolbarPosition: { x: number; y: number };
 }

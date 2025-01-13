@@ -1,90 +1,52 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { Textarea } from '@/components/ui';
 import { cn } from '@/lib/utils';
-import { playTypewriterSound, enableTypewriterSound } from '@/lib/sounds';
-import { useUIStore } from '@/store/uiStore';
 import { useNoteMutations } from '@/hooks/useNoteMutations';
 
 export default function Home() {
   const router = useRouter();
-  const { fontSize, fontFamily, typewriterMode } = useUIStore();
   const { createNote } = useNoteMutations();
   const [content, setContent] = useState('');
-  const [isReady, setIsReady] = useState(false);
 
-  // Enable typewriter sound on mount
-  useEffect(() => {
-    if (typewriterMode.sound) {
-      enableTypewriterSound();
-    }
-  }, [typewriterMode.sound]);
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setContent(e.target.value);
+  };
 
-  // Fade in the editor
-  useEffect(() => {
-    const timer = setTimeout(() => setIsReady(true), 100);
-    return () => clearTimeout(timer);
-  }, []);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!content.trim()) return;
 
-  // Create note when content is substantial
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (content.trim().length > 10) {
-        createNote.mutate(
-          {
-            title: content.split('\n')[0].slice(0, 50),
-            content,
-            maturity_state: 'SEED',
-          },
-          {
-            onSuccess: data => {
-              router.push(`/notes/${data.id}`);
-            },
-          }
-        );
-      }
-    }, 2000);
+    const note = await createNote.mutateAsync({
+      title: content.split('\n')[0] || 'Untitled Note',
+      content,
+    });
 
-    return () => clearTimeout(timer);
-  }, [content, createNote, router]);
+    router.push(`/notes/${note.id}`);
+  };
 
   return (
-    <main className="min-h-screen bg-surface-pure dark:bg-surface-dark">
-      <div
-        className={cn(
-          'max-w-prose mx-auto px-4 pt-16 relative',
-          'opacity-0 transition-opacity duration-slow ease-gentle',
-          isReady && 'opacity-100'
-        )}
-      >
+    <main className="flex min-h-screen flex-col items-center justify-between p-24">
+      <form onSubmit={handleSubmit} className="w-full max-w-2xl">
         <Textarea
-          autoFocus
           value={content}
-          onChange={e => {
-            setContent(e.target.value);
-            if (typewriterMode.sound) {
-              const lastChar = e.target.value.slice(-1);
-              if (lastChar) playTypewriterSound(lastChar);
-            }
-          }}
-          placeholder="Begin writing..."
-          className={cn(
-            'min-h-[80vh] w-full bg-transparent border-0 focus:ring-0',
-            'text-xl leading-relaxed text-ink-rich dark:text-ink-inverse',
-            'placeholder:text-ink-faint/30 placeholder:italic placeholder:font-light',
-            'resize-none transition-all duration-normal ease-gentle',
-            'tracking-normal',
-            {
-              'font-serif': fontFamily === 'serif',
-              'font-sans': fontFamily === 'sans',
-              'font-mono': fontFamily === 'mono',
-            }
-          )}
-          style={{
-            fontSize: `${fontSize}px`,
-          }}
+          onChange={handleChange}
+          placeholder="Start writing..."
+          className="min-h-[200px] text-lg"
+          autoFocus
         />
-      </div>
+        <button
+          type="submit"
+          className={cn(
+            'mt-4 px-4 py-2 bg-blue-500 text-white rounded',
+            'hover:bg-blue-600 transition-colors',
+            'disabled:opacity-50 disabled:cursor-not-allowed'
+          )}
+          disabled={!content.trim()}
+        >
+          Create Note
+        </button>
+      </form>
     </main>
   );
 }

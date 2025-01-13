@@ -1,7 +1,5 @@
 import React, { useEffect, useCallback, useState, useRef } from 'react';
 import { useNoteMutations } from '@/hooks/useNoteMutations';
-import { useSupabase } from '@/contexts/SupabaseContext';
-import { useRouter } from 'next/router';
 import { EditorToolbar } from './EditorToolbar';
 import { EditorContainer } from './EditorContainer';
 import AmbientSoundPlayer from '../AmbientSoundPlayer';
@@ -9,18 +7,13 @@ import type { Selection, NoteEditorProps } from './types';
 import { KeyboardShortcutsPanel } from './KeyboardShortcutsPanel';
 import { AutosavePlugin } from './plugins/AutosavePlugin';
 import { FormatPlugin } from '@/components/editor/plugins/FormatPlugin';
-import { MarkdownPlugin } from './plugins/MarkdownPlugin';
 import useEditorStore from '@/store/editorStore';
 import { EditorErrorBoundary, ToolbarErrorBoundary } from './ErrorBoundary';
 
 const SAVE_DELAY = 1000;
 
 // Initialize plugins
-const defaultPlugins = [
-  new AutosavePlugin(),
-  new FormatPlugin(),
-  new MarkdownPlugin(),
-];
+const defaultPlugins = [new AutosavePlugin(), new FormatPlugin()];
 
 export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -33,12 +26,10 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
     commands,
     stats,
     saveStatus,
-    isAmbientSound,
     showToolbar,
     toolbarPosition,
     setContent,
     setSelection,
-    toggleAmbientSound,
     setToolbarPosition,
     setShowToolbar,
     initialize,
@@ -216,37 +207,39 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
       onError={handleEditorError}
       onReset={handleEditorReset}
     >
-      <div className="relative flex flex-col h-full">
-        <ToolbarErrorBoundary onError={handleToolbarError}>
-          <EditorToolbar
-            stats={stats}
-            saveStatus={saveStatus}
-            isAmbientSound={isAmbientSound}
-            onToggleAmbientSound={toggleAmbientSound}
+      <div className="flex flex-col h-full">
+        {/* Editor Header */}
+        <header className="flex items-center justify-between p-4 border-b border-ink-faint">
+          <div className="flex items-center space-x-4">
+            <h1 className="text-xl font-medium text-ink-rich">
+              {initialNote?.title || 'Untitled Note'}
+            </h1>
+            <span className="text-sm text-ink-muted">
+              {stats.wordCount} words · {stats.readingTime} min read
+            </span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <span className="text-sm text-ink-muted">
+              {saveStatus === 'saved' ? 'Saved' : 'Saving...'}
+            </span>
+          </div>
+        </header>
+
+        {/* Editor Content */}
+        <div className="flex-1 overflow-auto">
+          <VirtualTextarea
+            ref={textareaRef}
+            content={content}
+            onChange={handleChange}
+            onSelect={handleSelectionChange}
           />
-        </ToolbarErrorBoundary>
+        </div>
 
-        <EditorContainer
-          content={content}
-          showToolbar={showToolbar}
-          toolbarPosition={toolbarPosition}
-          commands={commands}
-          textareaRef={textareaRef}
-          onContentChange={handleContentChange}
-          onSelectionChange={handleSelectionChange}
-        />
-
-        {showKeyboardShortcuts && (
-          <KeyboardShortcutsPanel
-            isOpen={showKeyboardShortcuts}
+        {/* Floating Format Toolbar */}
+        {showToolbar && (
+          <FloatingFormatToolbar
+            position={toolbarPosition}
             commands={Array.from(commands.values())}
-            onClose={() => setShowKeyboardShortcuts(false)}
-          />
-        )}
-        {isAmbientSound && (
-          <AmbientSoundPlayer
-            isPlaying={isAmbientSound}
-            onClose={toggleAmbientSound}
           />
         )}
       </div>

@@ -7,24 +7,13 @@ interface FormatState extends Record<string, unknown> {
   activeFormats: Set<FormatType>;
 }
 
-const formatTypes: FormatType[] = [
-  'bold',
-  'italic',
-  'heading',
-  'link',
-  'code',
-  'quote',
-  'list',
-];
+const formatTypes: FormatType[] = ['bold', 'italic', 'code', 'link'];
 
 const shortcuts: Record<FormatType, string> = {
   bold: '⌘B',
   italic: '⌘I',
-  heading: '⌘H',
-  link: '⌘K',
   code: '⌘E',
-  quote: '⇧⌘.',
-  list: '⌘L',
+  link: '⌘K',
   table: '⌘T',
   image: '⌘P',
 };
@@ -32,19 +21,13 @@ const shortcuts: Record<FormatType, string> = {
 const getFormatPrefix = (type: FormatType): string => {
   switch (type) {
     case 'bold':
-      return '**';
+      return '';
     case 'italic':
-      return '_';
-    case 'heading':
-      return '# ';
+      return '';
     case 'link':
-      return '[';
+      return '';
     case 'code':
-      return '`';
-    case 'quote':
-      return '> ';
-    case 'list':
-      return '- ';
+      return '';
     default:
       return '';
   }
