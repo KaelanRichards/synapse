@@ -145,24 +145,22 @@ export interface NoteEditorProps {
 // Editor Action Types
 export type EditorAction =
   | { type: 'SET_CONTENT'; payload: string }
-  | { type: 'SET_SELECTION'; payload: Selection | null }
+  | { type: 'SET_SELECTION'; payload: Selection }
   | { type: 'ADD_TO_UNDO_STACK'; payload: UndoStackItem }
   | { type: 'UNDO' }
   | { type: 'REDO' }
-  | { type: 'UPDATE_STATS' }
+  | { type: 'UPDATE_STATS'; payload: EditorStats }
   | { type: 'SET_SAVE_STATUS'; payload: SaveStatus }
   | { type: 'TOGGLE_FOCUS_MODE' }
   | { type: 'TOGGLE_PARAGRAPH_FOCUS' }
   | { type: 'TOGGLE_AMBIENT_SOUND' }
-  | { type: 'SET_TOOLBAR_VISIBILITY'; payload: boolean }
-  | { type: 'SET_TOOLBAR_POSITION'; payload: { x: number; y: number } }
+  | { type: 'UPDATE_PLUGIN_STATE'; payload: { pluginId: string; state: any } }
   | { type: 'REGISTER_PLUGIN'; payload: Plugin }
   | { type: 'UNREGISTER_PLUGIN'; payload: string }
-  | {
-      type: 'UPDATE_PLUGIN_STATE';
-      payload: { pluginId: string; state: unknown };
-    }
+  | { type: 'REGISTER_COMMAND'; payload: Command }
+  | { type: 'UNREGISTER_COMMAND'; payload: string }
+  | { type: 'FORMAT'; payload: { type: FormatType; selection: Selection } }
   | { type: 'ADD_DECORATION'; payload: Decoration }
   | { type: 'REMOVE_DECORATION'; payload: string }
-  | { type: 'REGISTER_COMMAND'; payload: Command }
-  | { type: 'UNREGISTER_COMMAND'; payload: string };
+  | { type: 'SET_TOOLBAR_VISIBILITY'; payload: boolean }
+  | { type: 'SET_TOOLBAR_POSITION'; payload: { x: number; y: number } };

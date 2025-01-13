@@ -86,23 +86,33 @@ export class EditorCore implements Editor {
   };
 
   public registerPlugin = (plugin: Plugin): void => {
+    // Check if plugin is already registered
     if (this.plugins.some(p => p.id === plugin.id)) {
-      throw new Error(`Plugin with id ${plugin.id} is already registered`);
+      // Unregister existing plugin first
+      this.unregisterPlugin(plugin.id);
     }
 
     // Initialize plugin
-    if (plugin.init) {
-      const destroyHandler = plugin.init(this);
-      if (typeof destroyHandler === 'function') {
-        this.pluginDestroyHandlers.set(plugin.id, destroyHandler);
-      }
+    const cleanup = plugin.init?.(this);
+    if (cleanup) {
+      this.pluginDestroyHandlers.set(plugin.id, cleanup);
     }
 
-    // Register commands
-    plugin.commands?.forEach(this.registerCommand);
+    // Register plugin's commands
+    plugin.commands?.forEach(command => {
+      if (!this.commands.has(command.id)) {
+        this.commands.set(command.id, command);
+        this.dispatch({ type: 'REGISTER_COMMAND', payload: command });
+      }
+    });
 
-    // Register decorations
-    plugin.decorations?.forEach(this.addDecoration);
+    // Register plugin's decorations
+    plugin.decorations?.forEach(decoration => {
+      if (!this.decorations.has(decoration.id)) {
+        this.decorations.set(decoration.id, decoration);
+        this.dispatch({ type: 'ADD_DECORATION', payload: decoration });
+      }
+    });
 
     this.plugins.push(plugin);
     this.dispatch({ type: 'REGISTER_PLUGIN', payload: plugin });
@@ -120,10 +130,16 @@ export class EditorCore implements Editor {
     }
 
     // Remove commands
-    plugin.commands?.forEach(cmd => this.commands.delete(cmd.id));
+    plugin.commands?.forEach(cmd => {
+      this.commands.delete(cmd.id);
+      this.dispatch({ type: 'UNREGISTER_COMMAND', payload: cmd.id });
+    });
 
     // Remove decorations
-    plugin.decorations?.forEach(dec => this.decorations.delete(dec.id));
+    plugin.decorations?.forEach(dec => {
+      this.decorations.delete(dec.id);
+      this.dispatch({ type: 'REMOVE_DECORATION', payload: dec.id });
+    });
 
     this.plugins = this.plugins.filter(p => p.id !== pluginId);
     this.dispatch({ type: 'UNREGISTER_PLUGIN', payload: pluginId });

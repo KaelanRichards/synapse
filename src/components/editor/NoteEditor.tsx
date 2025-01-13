@@ -1,136 +1,316 @@
-import React, { useEffect, useCallback, useState } from 'react';
+import React, {
+  useEffect,
+  useLayoutEffect,
+  useCallback,
+  useState,
+  useRef,
+  useMemo,
+} from 'react';
 import { cn } from '@/lib/utils';
 import { useNoteMutations } from '@/hooks/useNoteMutations';
 import { useEditor } from '@/contexts/EditorContext';
-import { useEditorState } from '@/hooks/useEditorState';
 import { useSupabase } from '@/contexts/SupabaseContext';
 import { useRouter } from 'next/router';
 import { EditorToolbar } from './EditorToolbar';
-import { FormatToolbar } from './FormatToolbar';
 import { SearchReplaceToolbar } from './SearchReplaceToolbar';
 import { VirtualTextarea } from './VirtualTextarea';
 import AmbientSoundPlayer from '../AmbientSoundPlayer';
+import { EditorCore } from './EditorCore';
 import type {
   FormatType,
   Selection,
   NoteEditorProps,
-  Editor,
-  EditorAction,
   EditorState,
 } from './types';
 import { KeyboardShortcutsPanel } from './KeyboardShortcutsPanel';
 import { SearchReplacePlugin } from './plugins/SearchReplacePlugin';
-import { nanoid } from 'nanoid';
+import { AutosavePlugin } from './plugins/AutosavePlugin';
+import { FormatPlugin } from '@/components/editor/plugins/FormatPlugin';
 
 const SAVE_DELAY = 1000;
 
 export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
+  const editorCoreRef = useRef<EditorCore>();
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { updateNote } = useNoteMutations();
   const { state: editorContext, setTypewriterMode } = useEditor();
   const supabase = useSupabase();
   const router = useRouter();
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
 
-  const {
-    state,
-    textareaRef,
-    handleContentChange,
-    handleFormat,
-    handleSelection,
-    undo,
-    redo,
-    toggleFocusMode,
-    toggleParagraphFocus,
-    toggleAmbientSound,
-    setSaveStatus,
-  } = useEditorState({
-    initialContent: initialNote?.content ?? '',
-    onChange: content => handleSave(content, setSaveStatus),
-    onFormat: (type: FormatType, selection: Selection) => {
-      // Additional format handling if needed
-    },
-  });
-
-  // Initialize plugins
-  useEffect(() => {
-    const searchReplacePlugin = new SearchReplacePlugin();
-    const editorInstance: Editor = {
-      id: nanoid(),
-      plugins: [],
-      commands: new Map(),
-      decorations: new Map(),
-      state,
-      dispatch: (action: EditorAction) => {
-        if (action.type === 'UPDATE_PLUGIN_STATE') {
-          const newState: EditorState = {
-            ...state,
-            plugins: {
-              ...state.plugins,
-              [action.payload.pluginId]: action.payload.state,
-            },
-          };
-          // Update the editor state directly since we can't use setState
-          Object.assign(state, newState);
-        }
+  const initialEditorState = useMemo<EditorState>(
+    () => ({
+      content: initialNote?.content ?? '',
+      selection: null,
+      undoStack: [],
+      redoStack: [],
+      lastUndoTime: Date.now(),
+      stats: {
+        wordCount: 0,
+        charCount: 0,
+        timeSpent: 0,
+        linesCount: 0,
+        readingTime: 0,
       },
-      subscribe: () => () => {},
-      registerPlugin: () => {},
-      unregisterPlugin: () => {},
-      registerCommand: () => {},
-      executeCommand: () => {},
-      addDecoration: () => {},
-      removeDecoration: () => {},
-    };
+      saveStatus: 'saved' as const,
+      isLocalFocusMode: false,
+      isParagraphFocus: false,
+      isAmbientSound: false,
+      showToolbar: false,
+      toolbarPosition: { x: 0, y: 0 },
+      plugins: {},
+      decorations: [],
+      commands: [],
+    }),
+    [initialNote?.content]
+  );
 
-    const cleanup = searchReplacePlugin.init(editorInstance);
+  const [editorState, setEditorState] =
+    useState<EditorState>(initialEditorState);
+
+  // Memoize the save callback to prevent unnecessary plugin re-initialization
+  const handleSave = useCallback(
+    async (content: string) => {
+      if (!initialNote?.id) return;
+      await updateNote.mutateAsync({ id: initialNote.id, content });
+    },
+    [initialNote?.id, updateNote]
+  );
+
+  // Initialize EditorCore
+  useLayoutEffect(() => {
+    if (!editorCoreRef.current) {
+      editorCoreRef.current = new EditorCore(initialEditorState);
+    }
+
+    // Clean up existing plugins first
+    editorCoreRef.current.plugins.forEach(plugin => {
+      editorCoreRef.current?.unregisterPlugin(plugin.id);
+    });
+
+    // Initialize plugins
+    const searchReplacePlugin = new SearchReplacePlugin();
+    const autosavePlugin = new AutosavePlugin({
+      onSave: handleSave,
+      delay: SAVE_DELAY,
+    });
+    const formatPlugin = new FormatPlugin();
+
+    // Register plugins
+    editorCoreRef.current.registerPlugin(searchReplacePlugin);
+    editorCoreRef.current.registerPlugin(autosavePlugin);
+    editorCoreRef.current.registerPlugin(formatPlugin);
+
+    // Subscribe to state changes with optimized updates
+    const unsubscribe = editorCoreRef.current.subscribe(newState => {
+      setEditorState(prevState => {
+        // Fast path: if references are equal, no update needed
+        if (prevState === newState) return prevState;
+
+        // Only compare relevant fields that should trigger a re-render
+        const hasRelevantChanges =
+          prevState.content !== newState.content ||
+          prevState.saveStatus !== newState.saveStatus ||
+          prevState.isLocalFocusMode !== newState.isLocalFocusMode ||
+          prevState.isParagraphFocus !== newState.isParagraphFocus ||
+          prevState.isAmbientSound !== newState.isAmbientSound ||
+          prevState.showToolbar !== newState.showToolbar ||
+          JSON.stringify(prevState.selection) !==
+            JSON.stringify(newState.selection) ||
+          JSON.stringify(prevState.toolbarPosition) !==
+            JSON.stringify(newState.toolbarPosition) ||
+          JSON.stringify(prevState.stats) !== JSON.stringify(newState.stats) ||
+          JSON.stringify(prevState.plugins?.['search-replace']) !==
+            JSON.stringify(newState.plugins?.['search-replace']) ||
+          JSON.stringify(prevState.plugins?.['autosave']) !==
+            JSON.stringify(newState.plugins?.['autosave']);
+
+        return hasRelevantChanges ? newState : prevState;
+      });
+    });
 
     return () => {
-      if (cleanup) cleanup();
+      unsubscribe();
+      editorCoreRef.current?.plugins.forEach(plugin => {
+        if (plugin.destroy) plugin.destroy();
+      });
+      editorCoreRef.current = undefined;
     };
-  }, [state]);
+  }, [initialEditorState, handleSave]);
 
-  const handleSave = useCallback(
-    (
-      content: string,
-      setSaveStatus: (status: 'saved' | 'saving' | 'unsaved') => void
-    ) => {
-      if (!initialNote?.id) return;
+  // Memoize content change handler with debounced stats update
+  const handleContentChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const newContent = e.target.value;
+      editorCoreRef.current?.dispatch({
+        type: 'SET_CONTENT',
+        payload: newContent,
+      });
 
-      if (content === initialNote.content) return;
-
-      setSaveStatus('saving');
+      // Debounce stats update to prevent unnecessary re-renders during typing
       const timeoutId = setTimeout(() => {
-        updateNote.mutate(
-          { id: initialNote.id, content },
-          {
-            onSuccess: () => setSaveStatus('saved'),
-            onError: () => setSaveStatus('unsaved'),
-          }
-        );
-      }, SAVE_DELAY);
+        const content = editorCoreRef.current?.state.content ?? '';
+        const words = content.trim().split(/\s+/).filter(Boolean).length;
+        const lines = content.split('\n').length;
+        const readingTime = Math.ceil(words / 200);
+
+        editorCoreRef.current?.dispatch({
+          type: 'UPDATE_STATS',
+          payload: {
+            wordCount: words,
+            charCount: content.length,
+            linesCount: lines,
+            readingTime,
+            timeSpent: editorCoreRef.current?.state.stats.timeSpent ?? 0,
+          },
+        });
+      }, 500);
 
       return () => clearTimeout(timeoutId);
     },
-    [initialNote, updateNote]
+    []
   );
 
-  // Get search-replace plugin state
-  const searchReplaceState = state.plugins?.['search-replace'] || {
-    isOpen: false,
-    searchTerm: '',
-    replaceTerm: '',
-    matches: [],
-    currentMatch: 0,
-    caseSensitive: false,
-    useRegex: false,
-  };
+  const handleSelection = useCallback((selection: Selection) => {
+    editorCoreRef.current?.dispatch({
+      type: 'SET_SELECTION',
+      payload: selection,
+    });
+  }, []);
 
-  // Get autosave plugin state
-  const autosaveState = state.plugins?.['autosave'] || {
-    saveStatus: 'saved' as const,
-    lastSavedContent: '',
-    lastSaveTime: Date.now(),
-  };
+  const handleFormat = useCallback(
+    (type: FormatType) => {
+      if (!editorCoreRef.current || !editorState.selection) return;
+      editorCoreRef.current.dispatch({
+        type: 'FORMAT',
+        payload: {
+          type,
+          selection: editorState.selection,
+        },
+      });
+    },
+    [editorState.selection]
+  );
+
+  // Memoize toggle handlers
+  const toggleFocusMode = useCallback(() => {
+    editorCoreRef.current?.dispatch({ type: 'TOGGLE_FOCUS_MODE' });
+  }, []);
+
+  const toggleParagraphFocus = useCallback(() => {
+    editorCoreRef.current?.dispatch({ type: 'TOGGLE_PARAGRAPH_FOCUS' });
+  }, []);
+
+  const toggleAmbientSound = useCallback(() => {
+    editorCoreRef.current?.dispatch({ type: 'TOGGLE_AMBIENT_SOUND' });
+  }, []);
+
+  // Memoize keyboard handler
+  const handleKeyboard = useCallback(
+    (e: KeyboardEvent) => {
+      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+      const cmdKey = isMac ? e.metaKey : e.ctrlKey;
+
+      // Handle combined shortcuts first
+      if (cmdKey && e.shiftKey) {
+        switch (e.key.toLowerCase()) {
+          case '.':
+            e.preventDefault();
+            editorCoreRef.current?.executeCommand('format-quote');
+            break;
+          case 'l':
+            e.preventDefault();
+            editorCoreRef.current?.executeCommand('format-list');
+            break;
+        }
+        return;
+      }
+
+      // Handle single modifier shortcuts
+      if (cmdKey) {
+        switch (e.key.toLowerCase()) {
+          case 'b':
+            e.preventDefault();
+            editorCoreRef.current?.executeCommand('format-bold');
+            break;
+          case 'i':
+            e.preventDefault();
+            editorCoreRef.current?.executeCommand('format-italic');
+            break;
+          case 'h':
+            e.preventDefault();
+            editorCoreRef.current?.executeCommand('format-heading');
+            break;
+          case 'k':
+            e.preventDefault();
+            editorCoreRef.current?.executeCommand('format-link');
+            break;
+          case 'e':
+            e.preventDefault();
+            editorCoreRef.current?.executeCommand('format-code');
+            break;
+          case 'z':
+            e.preventDefault();
+            if (e.shiftKey) {
+              editorCoreRef.current?.dispatch({ type: 'REDO' });
+            } else {
+              editorCoreRef.current?.dispatch({ type: 'UNDO' });
+            }
+            break;
+          case 'f':
+            e.preventDefault();
+            toggleFocusMode();
+            break;
+          case 'p':
+            e.preventDefault();
+            toggleParagraphFocus();
+            break;
+          case 's':
+            e.preventDefault();
+            toggleAmbientSound();
+            break;
+        }
+        return;
+      }
+
+      // Handle non-modifier shortcuts
+      if (e.key === '?' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        setShowKeyboardShortcuts(prev => !prev);
+      }
+    },
+    [toggleFocusMode, toggleParagraphFocus, toggleAmbientSound]
+  );
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyboard);
+    return () => window.removeEventListener('keydown', handleKeyboard);
+  }, [handleKeyboard]);
+
+  // Memoize toolbar props to prevent unnecessary re-renders
+  const toolbarProps = useMemo(
+    () => ({
+      saveStatus: editorState.saveStatus,
+      stats: editorState.stats,
+      isLocalFocusMode: editorState.isLocalFocusMode,
+      isAmbientSound: editorState.isAmbientSound,
+      isTypewriterMode: editorContext.typewriterMode.enabled,
+      autosaveState: editorState.plugins?.['autosave'],
+      showFormatting: editorState.showToolbar,
+      formatPosition: editorState.toolbarPosition,
+    }),
+    [
+      editorState.saveStatus,
+      editorState.stats,
+      editorState.isLocalFocusMode,
+      editorState.isAmbientSound,
+      editorState.showToolbar,
+      editorState.toolbarPosition,
+      editorState.plugins?.['autosave'],
+      editorContext.typewriterMode.enabled,
+    ]
+  );
 
   // Check auth status
   useEffect(() => {
@@ -145,53 +325,17 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
     checkAuth();
   }, [router, supabase]);
 
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyboard = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && !e.shiftKey) {
-        switch (e.key.toLowerCase()) {
-          case 'z':
-            e.preventDefault();
-            undo();
-            break;
-          case 'y':
-            e.preventDefault();
-            redo();
-            break;
-          case 'f':
-            e.preventDefault();
-            toggleFocusMode();
-            break;
-          case 'p':
-            e.preventDefault();
-            toggleParagraphFocus();
-            break;
-        }
-      } else if (e.key === '?' && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        e.preventDefault();
-        setShowKeyboardShortcuts(prev => !prev);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyboard);
-    return () => window.removeEventListener('keydown', handleKeyboard);
-  }, [undo, redo, toggleFocusMode, toggleParagraphFocus]);
-
   return (
     <div
       className={cn(
         'relative w-full h-full min-h-screen',
-        state.isLocalFocusMode && 'bg-neutral-50 dark:bg-neutral-900',
-        state.isParagraphFocus && 'prose-lg'
+        editorState.isLocalFocusMode && 'bg-neutral-50 dark:bg-neutral-900',
+        editorState.isParagraphFocus && 'prose-lg'
       )}
     >
       <EditorToolbar
-        saveStatus={state.saveStatus}
-        stats={state.stats}
-        isLocalFocusMode={state.isLocalFocusMode}
-        isAmbientSound={state.isAmbientSound}
-        isTypewriterMode={editorContext.typewriterMode.enabled}
-        autosaveState={autosaveState}
+        {...toolbarProps}
+        onFormat={handleFormat}
         onToggleFocusMode={toggleFocusMode}
         onToggleAmbientSound={toggleAmbientSound}
         onToggleTypewriterMode={() =>
@@ -202,195 +346,78 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
       />
 
       <VirtualTextarea
-        content={state.content}
+        content={editorState.content}
         onChange={handleContentChange}
         onSelect={handleSelection}
         textareaRef={textareaRef}
-        isLocalFocusMode={state.isLocalFocusMode}
-        isParagraphFocus={state.isParagraphFocus}
+        isLocalFocusMode={editorState.isLocalFocusMode}
+        isParagraphFocus={editorState.isParagraphFocus}
       />
 
-      {state.isAmbientSound && (
+      {editorState.isAmbientSound && (
         <AmbientSoundPlayer
-          isPlaying={state.isAmbientSound}
+          isPlaying={editorState.isAmbientSound}
           onClose={toggleAmbientSound}
         />
       )}
 
-      {state.showToolbar && (
-        <FormatToolbar
-          position={state.toolbarPosition}
-          onFormat={handleFormat}
-        />
-      )}
-
       <SearchReplaceToolbar
-        isOpen={searchReplaceState.isOpen}
-        searchTerm={searchReplaceState.searchTerm}
-        replaceTerm={searchReplaceState.replaceTerm}
-        matchCount={searchReplaceState.matches.length}
-        currentMatch={searchReplaceState.currentMatch}
-        caseSensitive={searchReplaceState.caseSensitive}
-        useRegex={searchReplaceState.useRegex}
+        isOpen={editorState.plugins?.['search-replace']?.isOpen ?? false}
+        searchTerm={editorState.plugins?.['search-replace']?.searchTerm ?? ''}
+        replaceTerm={editorState.plugins?.['search-replace']?.replaceTerm ?? ''}
+        matchCount={
+          editorState.plugins?.['search-replace']?.matches?.length ?? 0
+        }
+        currentMatch={
+          editorState.plugins?.['search-replace']?.currentMatch ?? 0
+        }
+        caseSensitive={
+          editorState.plugins?.['search-replace']?.caseSensitive ?? false
+        }
+        useRegex={editorState.plugins?.['search-replace']?.useRegex ?? false}
         onClose={() => textareaRef.current?.focus()}
         onSearchChange={value => {
-          textareaRef.current?.dispatchEvent(
-            new CustomEvent('search', { detail: { searchTerm: value } })
-          );
+          editorCoreRef.current?.dispatch({
+            type: 'UPDATE_PLUGIN_STATE',
+            payload: {
+              pluginId: 'search-replace',
+              state: { searchTerm: value },
+            },
+          });
         }}
         onReplaceChange={value => {
-          textareaRef.current?.dispatchEvent(
-            new CustomEvent('replace', { detail: { replaceTerm: value } })
-          );
+          editorCoreRef.current?.dispatch({
+            type: 'UPDATE_PLUGIN_STATE',
+            payload: {
+              pluginId: 'search-replace',
+              state: { replaceTerm: value },
+            },
+          });
         }}
         onFindNext={() => {
-          textareaRef.current?.dispatchEvent(new CustomEvent('findNext'));
+          editorCoreRef.current?.executeCommand('findNext');
         }}
         onFindPrevious={() => {
-          textareaRef.current?.dispatchEvent(new CustomEvent('findPrevious'));
+          editorCoreRef.current?.executeCommand('findPrevious');
         }}
         onReplace={() => {
-          textareaRef.current?.dispatchEvent(new CustomEvent('replace'));
+          editorCoreRef.current?.executeCommand('replace');
         }}
         onReplaceAll={() => {
-          textareaRef.current?.dispatchEvent(new CustomEvent('replaceAll'));
+          editorCoreRef.current?.executeCommand('replaceAll');
         }}
         onToggleCaseSensitive={() => {
-          textareaRef.current?.dispatchEvent(
-            new CustomEvent('toggleCaseSensitive')
-          );
+          editorCoreRef.current?.executeCommand('toggleCaseSensitive');
         }}
         onToggleRegex={() => {
-          textareaRef.current?.dispatchEvent(new CustomEvent('toggleRegex'));
+          editorCoreRef.current?.executeCommand('toggleRegex');
         }}
       />
 
       <KeyboardShortcutsPanel
         isOpen={showKeyboardShortcuts}
         onClose={() => setShowKeyboardShortcuts(false)}
-        commands={[
-          {
-            id: 'undo',
-            name: 'Undo',
-            shortcut: '⌘Z',
-            category: 'History',
-            execute: () => undo(),
-          },
-          {
-            id: 'redo',
-            name: 'Redo',
-            shortcut: '⌘Y',
-            category: 'History',
-            execute: () => redo(),
-          },
-          {
-            id: 'focus-mode',
-            name: 'Toggle Focus Mode',
-            shortcut: '⌘F',
-            category: 'View',
-            execute: () => toggleFocusMode(),
-          },
-          {
-            id: 'paragraph-focus',
-            name: 'Toggle Paragraph Focus',
-            shortcut: '⌘P',
-            category: 'View',
-            execute: () => toggleParagraphFocus(),
-          },
-          {
-            id: 'search',
-            name: 'Search',
-            shortcut: '⌘F',
-            category: 'Search',
-            execute: () =>
-              textareaRef.current?.dispatchEvent(
-                new CustomEvent('toggleSearch')
-              ),
-          },
-          {
-            id: 'find-next',
-            name: 'Find Next',
-            shortcut: '⌘G',
-            category: 'Search',
-            execute: () =>
-              textareaRef.current?.dispatchEvent(new CustomEvent('findNext')),
-          },
-          {
-            id: 'find-previous',
-            name: 'Find Previous',
-            shortcut: '⇧⌘G',
-            category: 'Search',
-            execute: () =>
-              textareaRef.current?.dispatchEvent(
-                new CustomEvent('findPrevious')
-              ),
-          },
-          {
-            id: 'replace',
-            name: 'Replace',
-            shortcut: '⌘H',
-            category: 'Search',
-            execute: () =>
-              textareaRef.current?.dispatchEvent(new CustomEvent('replace')),
-          },
-          {
-            id: 'replace-all',
-            name: 'Replace All',
-            shortcut: '⇧⌘H',
-            category: 'Search',
-            execute: () =>
-              textareaRef.current?.dispatchEvent(new CustomEvent('replaceAll')),
-          },
-          {
-            id: 'bold',
-            name: 'Bold',
-            shortcut: '⌘B',
-            category: 'Format',
-            execute: () => handleFormat('bold'),
-          },
-          {
-            id: 'italic',
-            name: 'Italic',
-            shortcut: '⌘I',
-            category: 'Format',
-            execute: () => handleFormat('italic'),
-          },
-          {
-            id: 'heading',
-            name: 'Heading',
-            shortcut: '⌘H',
-            category: 'Format',
-            execute: () => handleFormat('heading'),
-          },
-          {
-            id: 'link',
-            name: 'Link',
-            shortcut: '⌘K',
-            category: 'Format',
-            execute: () => handleFormat('link'),
-          },
-          {
-            id: 'code',
-            name: 'Code',
-            shortcut: '⌘E',
-            category: 'Format',
-            execute: () => handleFormat('code'),
-          },
-          {
-            id: 'quote',
-            name: 'Quote',
-            shortcut: '⇧⌘.',
-            category: 'Format',
-            execute: () => handleFormat('quote'),
-          },
-          {
-            id: 'keyboard-shortcuts',
-            name: 'Show Keyboard Shortcuts',
-            shortcut: '?',
-            category: 'Help',
-            execute: () => setShowKeyboardShortcuts(prev => !prev),
-          },
-        ]}
+        commands={Array.from(editorCoreRef.current?.commands.values() ?? [])}
       />
     </div>
   );

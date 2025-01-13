@@ -1,11 +1,8 @@
-import { Plugin, Editor } from '../types';
-import { useNoteMutations } from '@/hooks/useNoteMutations';
+import type { Plugin, Editor } from '../types';
 
-interface AutosaveState {
-  lastSavedContent: string;
-  lastSaveTime: number;
-  saveStatus: 'saved' | 'saving' | 'unsaved' | 'error';
-  errorMessage?: string;
+interface AutosavePluginOptions {
+  onSave: (content: string) => Promise<void>;
+  delay?: number;
 }
 
 export class AutosavePlugin implements Plugin {
@@ -13,113 +10,104 @@ export class AutosavePlugin implements Plugin {
   public readonly name = 'Autosave';
   private editor: Editor | null = null;
   private saveTimeout: NodeJS.Timeout | null = null;
-  private readonly SAVE_DELAY = 1000; // 1 second
-  private readonly MAX_RETRY_ATTEMPTS = 3;
-  private retryAttempts = 0;
+  private options: AutosavePluginOptions;
+  private lastSavedContent: string = '';
+  private isSaving: boolean = false;
 
-  private state: AutosaveState = {
-    lastSavedContent: '',
-    lastSaveTime: 0,
-    saveStatus: 'saved',
-  };
-
-  public init(editor: Editor) {
-    this.editor = editor;
-    this.state.lastSavedContent = editor.state.content;
-
-    editor.dispatch({
-      type: 'UPDATE_PLUGIN_STATE',
-      payload: { pluginId: this.id, state: this.state },
-    });
-
-    return () => {
-      if (this.saveTimeout) {
-        clearTimeout(this.saveTimeout);
-      }
-      this.editor = null;
+  constructor(options: AutosavePluginOptions) {
+    this.options = {
+      delay: 1000,
+      ...options,
     };
   }
 
-  public hooks = {
-    afterContentChange: (content: string) => {
-      this.scheduleSave(content);
-    },
-  };
+  init(editor: Editor) {
+    this.editor = editor;
+    this.lastSavedContent = editor.state.content;
 
-  private scheduleSave(content: string) {
-    if (!this.editor) return;
+    // Initialize plugin state
+    editor.dispatch({
+      type: 'UPDATE_PLUGIN_STATE',
+      payload: {
+        pluginId: this.id,
+        state: {
+          saveStatus: 'saved' as const,
+          lastSaveTime: Date.now(),
+        },
+      },
+    });
 
-    // Clear any pending save
+    // Subscribe to content changes only
+    const unsubscribe = editor.subscribe(state => {
+      if (!this.isSaving && state.content !== this.lastSavedContent) {
+        this.scheduleSave();
+      }
+    });
+
+    return () => {
+      unsubscribe();
+      if (this.saveTimeout) {
+        clearTimeout(this.saveTimeout);
+      }
+    };
+  }
+
+  private scheduleSave() {
+    if (!this.editor || this.isSaving) return;
+
+    // Clear existing timeout
     if (this.saveTimeout) {
       clearTimeout(this.saveTimeout);
     }
 
-    // Don't save if content hasn't changed
-    if (content === this.state.lastSavedContent) {
-      return;
-    }
+    this.isSaving = true;
 
-    // Update state to show pending save
-    this.updateState({
-      saveStatus: 'unsaved',
+    // Update status to saving
+    this.editor.dispatch({
+      type: 'UPDATE_PLUGIN_STATE',
+      payload: {
+        pluginId: this.id,
+        state: {
+          saveStatus: 'saving' as const,
+          lastSaveTime: Date.now(),
+        },
+      },
     });
 
     // Schedule new save
-    this.saveTimeout = setTimeout(() => {
-      this.save(content);
-    }, this.SAVE_DELAY);
-  }
+    this.saveTimeout = setTimeout(async () => {
+      if (!this.editor) return;
 
-  private async save(content: string) {
-    if (!this.editor) return;
+      try {
+        await this.options.onSave(this.editor.state.content);
+        this.lastSavedContent = this.editor.state.content;
 
-    try {
-      this.updateState({
-        saveStatus: 'saving',
-      });
-
-      // Simulate API call - replace with actual save implementation
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      this.updateState({
-        lastSavedContent: content,
-        lastSaveTime: Date.now(),
-        saveStatus: 'saved',
-        errorMessage: undefined,
-      });
-
-      this.retryAttempts = 0;
-    } catch (error) {
-      console.error('Failed to save:', error);
-
-      if (this.retryAttempts < this.MAX_RETRY_ATTEMPTS) {
-        this.retryAttempts++;
-        this.updateState({
-          saveStatus: 'unsaved',
-          errorMessage: `Save failed, retrying... (${this.retryAttempts}/${this.MAX_RETRY_ATTEMPTS})`,
+        this.editor.dispatch({
+          type: 'UPDATE_PLUGIN_STATE',
+          payload: {
+            pluginId: this.id,
+            state: {
+              saveStatus: 'saved' as const,
+              lastSaveTime: Date.now(),
+            },
+          },
         });
-        setTimeout(() => this.save(content), 1000 * this.retryAttempts);
-      } else {
-        this.updateState({
-          saveStatus: 'error',
-          errorMessage:
-            'Failed to save after multiple attempts. Please try again.',
+      } catch (error) {
+        this.editor.dispatch({
+          type: 'UPDATE_PLUGIN_STATE',
+          payload: {
+            pluginId: this.id,
+            state: {
+              saveStatus: 'error' as const,
+              errorMessage:
+                error instanceof Error ? error.message : 'Save failed',
+              lastSaveTime: Date.now(),
+            },
+          },
         });
+      } finally {
+        this.isSaving = false;
       }
-    }
-  }
-
-  private updateState(newState: Partial<AutosaveState>) {
-    if (!this.editor) return;
-
-    this.state = {
-      ...this.state,
-      ...newState,
-    };
-
-    this.editor.dispatch({
-      type: 'UPDATE_PLUGIN_STATE',
-      payload: { pluginId: this.id, state: this.state },
-    });
+    }, this.options.delay);
   }
 }
