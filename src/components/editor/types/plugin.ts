@@ -1,4 +1,4 @@
-import type { Editor, Selection, FormatType } from '../types';
+import type { Editor, Selection, FormatType, CommandMap } from '../types';
 
 // Plugin Configuration Interface
 export interface IPluginConfig {
@@ -27,12 +27,39 @@ export interface IPluginLifecycle {
   onBlur?: () => void;
 }
 
-export type PluginEventHandler = (...args: any[]) => void;
+// Define specific event types
+export interface EditorEventMap {
+  'content:change': [content: string, prevContent: string];
+  'selection:change': [selection: Selection | null];
+  'editor:focus': [];
+  'editor:blur': [];
+  'format:before': [type: FormatType, selection: Selection];
+  'format:after': [type: FormatType, selection: Selection];
+  'format:active-formats-changed': [formats: FormatType[]];
+  keydown: [event: KeyboardEvent];
+  keyup: [event: KeyboardEvent];
+  paste: [event: ClipboardEvent];
+  drop: [event: DragEvent];
+}
+
+// Make event handlers type-safe
+export type PluginEventHandler<K extends keyof EditorEventMap> = (
+  ...args: EditorEventMap[K]
+) => void;
 
 export interface IPluginEventBus {
-  on: (event: string, handler: PluginEventHandler) => void;
-  off: (event: string, handler: PluginEventHandler) => void;
-  emit: (event: string, ...args: any[]) => void;
+  on: <K extends keyof EditorEventMap>(
+    event: K,
+    handler: PluginEventHandler<K>
+  ) => void;
+  off: <K extends keyof EditorEventMap>(
+    event: K,
+    handler: PluginEventHandler<K>
+  ) => void;
+  emit: <K extends keyof EditorEventMap>(
+    event: K,
+    ...args: EditorEventMap[K]
+  ) => void;
 }
 
 // Base Plugin Interface
@@ -78,14 +105,14 @@ export interface IPluginManager {
 
 // Plugin Command Interface
 export interface ICommand {
-  id: string;
+  id: keyof CommandMap;
   name: string;
   description?: string;
   shortcut?: string;
   enabled?: boolean;
   category?: string;
   isEnabled?: () => boolean;
-  execute: (...args: any[]) => void;
+  execute: <K extends keyof CommandMap>(...args: CommandMap[K]) => void;
 }
 
 // Plugin Decoration Interface
@@ -97,11 +124,28 @@ export interface IDecoration {
   priority?: number;
 }
 
+// Define specific hook types
 export interface IPluginHooks {
   beforeContentChange?: (content: string) => string | void;
   afterContentChange?: (content: string) => void;
   beforeFormat?: (type: FormatType, selection: Selection) => boolean;
   afterFormat?: (type: FormatType, selection: Selection) => void;
+  onSelectionChange?: (selection: Selection | null) => void;
+  onFocus?: () => void;
+  onBlur?: () => void;
+  onKeyDown?: (event: KeyboardEvent) => void;
+  onKeyUp?: (event: KeyboardEvent) => void;
+  onPaste?: (event: ClipboardEvent) => void;
+  onDrop?: (event: DragEvent) => void;
+}
+
+// Map event names to their handler types
+export type PluginHookMap = {
+  [K in keyof EditorEventMap]: (...args: EditorEventMap[K]) => void;
+};
+
+// Update IPluginHooks to include dynamic event handlers
+export interface IPluginHooks extends Partial<PluginHookMap> {
   [key: string]: ((...args: any[]) => any) | undefined;
 }
 

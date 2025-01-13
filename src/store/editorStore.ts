@@ -10,42 +10,49 @@ import type {
   UndoStackItem,
   FormatType,
   Decoration,
+  EditorAction,
+  CommandMap,
 } from '@/components/editor/types';
-import type { Plugin } from '@/components/editor/types/plugin';
+import type {
+  Plugin,
+  EditorEventMap,
+  PluginEventHandler,
+  IPluginHooks,
+} from '@/components/editor/types/plugin';
 
 enableMapSet();
 
-export interface EditorState {
-  content: string;
-  selection: Selection | null;
-  plugins: Map<string, Plugin>;
-  commands: Map<string, Command>;
-  decorations: Map<string, Decoration>;
-  undoStack: UndoStackItem[];
-  redoStack: UndoStackItem[];
-  lastUndoTime: number;
-  stats: {
-    wordCount: number;
-    charCount: number;
-    timeSpent: number;
-    linesCount: number;
-    readingTime: number;
-  };
-  saveStatus: 'saved' | 'saving' | 'error' | 'unsaved';
-  showToolbar: boolean;
-  toolbarPosition: { x: number; y: number };
-  activeFormats: Set<FormatType>;
-}
+type EditorStateType = Pick<
+  EditorStore,
+  | 'content'
+  | 'selection'
+  | 'plugins'
+  | 'commands'
+  | 'decorations'
+  | 'cleanupFunctions'
+  | 'undoStack'
+  | 'redoStack'
+  | 'lastUndoTime'
+  | 'stats'
+  | 'saveStatus'
+  | 'showToolbar'
+  | 'toolbarPosition'
+  | 'activeFormats'
+>;
 
-const useEditorStore = create<EditorStore>()(
+type EditorActionsType = Omit<EditorStore, keyof EditorStateType>;
+
+type StoreState = EditorStateType & EditorActionsType;
+
+const useEditorStore = create<StoreState>()(
   immer((set, get) => ({
     // Initial state
     content: '',
-    selection: null as Selection | null,
-    plugins: new Map(),
-    commands: new Map(),
-    decorations: new Map(),
-    cleanupFunctions: new Map(),
+    selection: null,
+    plugins: new Map<string, Plugin>(),
+    commands: new Map<string, Command>(),
+    decorations: new Map<string, Decoration>(),
+    cleanupFunctions: new Map<string, () => void>(),
     undoStack: [],
     redoStack: [],
     lastUndoTime: 0,
@@ -59,7 +66,7 @@ const useEditorStore = create<EditorStore>()(
     saveStatus: 'saved',
     showToolbar: false,
     toolbarPosition: { x: 0, y: 0 },
-    activeFormats: new Set(),
+    activeFormats: new Set<FormatType>(),
 
     // Actions
     setContent: content =>
@@ -88,9 +95,7 @@ const useEditorStore = create<EditorStore>()(
       }),
     getSelectedText: () => {
       const state = get();
-      return state.selection
-        ? state.content.slice(state.selection.start, state.selection.end)
-        : null;
+      return state.selection;
     },
 
     // Format actions
@@ -172,7 +177,6 @@ const useEditorStore = create<EditorStore>()(
     // Plugin actions
     registerPlugin: plugin =>
       set(state => {
-        // Create new Maps to avoid mutating frozen objects
         const newPlugins = new Map(state.plugins);
         const newCommands = new Map(state.commands);
         const newCleanupFunctions = new Map(state.cleanupFunctions);
@@ -187,24 +191,36 @@ const useEditorStore = create<EditorStore>()(
         }
 
         const cleanup = plugin.setup?.(state as any, {
-          emit: (event: string, ...args: any[]) => {
-            plugin.hooks?.[event]?.(...args);
+          emit: <K extends keyof EditorEventMap>(
+            event: K,
+            ...args: EditorEventMap[K]
+          ) => {
+            const handler = plugin.hooks?.[event] as
+              | PluginEventHandler<K>
+              | undefined;
+            handler?.(...args);
           },
-          on: (event: string, handler: (...args: any[]) => void) => {
-            if (!plugin.hooks) plugin.hooks = {};
-            plugin.hooks[event] = handler;
+          on: <K extends keyof EditorEventMap>(
+            event: K,
+            handler: PluginEventHandler<K>
+          ) => {
+            if (!plugin.hooks) plugin.hooks = {} as IPluginHooks;
+            (plugin.hooks[event] as any) = handler;
           },
-          off: (event: string, handler: (...args: any[]) => void) => {
+          off: <K extends keyof EditorEventMap>(
+            event: K,
+            handler: PluginEventHandler<K>
+          ) => {
             if (plugin.hooks?.[event] === handler) {
-              delete plugin.hooks[event];
+              delete (plugin.hooks as any)[event];
             }
           },
         });
+
         if (cleanup) {
           newCleanupFunctions.set(plugin.id, cleanup);
         }
 
-        // Update state with new Maps
         state.plugins = newPlugins;
         state.commands = newCommands;
         state.cleanupFunctions = newCleanupFunctions;
@@ -243,9 +259,14 @@ const useEditorStore = create<EditorStore>()(
         state.commands = newCommands;
       }),
 
-    executeCommand: (commandId, ...args) => {
+    executeCommand: <K extends keyof CommandMap>(
+      commandId: K,
+      ...args: CommandMap[K]
+    ) => {
       const command = get().commands.get(commandId);
-      if (command) command.execute(...args);
+      if (command) {
+        (command.execute as (...args: CommandMap[K]) => void)(...args);
+      }
     },
 
     addDecoration: decoration =>
@@ -266,10 +287,10 @@ const useEditorStore = create<EditorStore>()(
       return Array.from(get().decorations.values());
     },
 
-    updatePluginState: (pluginId, state) => {
+    updatePluginState: <T>(pluginId: string, state: T) => {
       const plugin = get().plugins.get(pluginId);
       if (plugin) {
-        plugin.state = state;
+        plugin.state = state as Record<string, unknown>;
       }
     },
 
@@ -364,19 +385,32 @@ const useEditorStore = create<EditorStore>()(
           }
 
           const cleanup = plugin.setup?.(state as any, {
-            emit: (event: string, ...args: any[]) => {
-              plugin.hooks?.[event]?.(...args);
+            emit: <K extends keyof EditorEventMap>(
+              event: K,
+              ...args: EditorEventMap[K]
+            ) => {
+              const handler = plugin.hooks?.[event] as
+                | PluginEventHandler<K>
+                | undefined;
+              handler?.(...args);
             },
-            on: (event: string, handler: any) => {
-              if (!plugin.hooks) plugin.hooks = {};
-              plugin.hooks[event] = handler;
+            on: <K extends keyof EditorEventMap>(
+              event: K,
+              handler: PluginEventHandler<K>
+            ) => {
+              if (!plugin.hooks) plugin.hooks = {} as IPluginHooks;
+              (plugin.hooks[event] as any) = handler;
             },
-            off: (event: string, handler: any) => {
+            off: <K extends keyof EditorEventMap>(
+              event: K,
+              handler: PluginEventHandler<K>
+            ) => {
               if (plugin.hooks?.[event] === handler) {
-                delete plugin.hooks[event];
+                delete (plugin.hooks as any)[event];
               }
             },
           });
+
           if (cleanup) {
             newCleanupFunctions.set(plugin.id, cleanup);
           }
@@ -440,19 +474,32 @@ const useEditorStore = create<EditorStore>()(
           }
 
           const cleanup = plugin.setup?.(state as any, {
-            emit: (event: string, ...args: any[]) => {
-              plugin.hooks?.[event]?.(...args);
+            emit: <K extends keyof EditorEventMap>(
+              event: K,
+              ...args: EditorEventMap[K]
+            ) => {
+              const handler = plugin.hooks?.[event] as
+                | PluginEventHandler<K>
+                | undefined;
+              handler?.(...args);
             },
-            on: (event: string, handler: any) => {
-              if (!plugin.hooks) plugin.hooks = {};
-              plugin.hooks[event] = handler;
+            on: <K extends keyof EditorEventMap>(
+              event: K,
+              handler: PluginEventHandler<K>
+            ) => {
+              if (!plugin.hooks) plugin.hooks = {} as IPluginHooks;
+              (plugin.hooks[event] as any) = handler;
             },
-            off: (event: string, handler: any) => {
+            off: <K extends keyof EditorEventMap>(
+              event: K,
+              handler: PluginEventHandler<K>
+            ) => {
               if (plugin.hooks?.[event] === handler) {
-                delete plugin.hooks[event];
+                delete (plugin.hooks as any)[event];
               }
             },
           });
+
           if (cleanup) {
             newCleanupFunctions.set(plugin.id, cleanup);
           }
@@ -572,7 +619,8 @@ const useEditorStore = create<EditorStore>()(
       });
     },
 
-    dispatch: (action: { type: string; payload: any }) => {
+    // Action dispatch
+    dispatch: (action: EditorAction) => {
       const state = get();
       switch (action.type) {
         case 'SET_CONTENT':
@@ -581,11 +629,25 @@ const useEditorStore = create<EditorStore>()(
         case 'SET_SELECTION':
           state.setSelection(action.payload);
           break;
-        case 'FORMAT_TEXT':
-          state.formatText(action.payload);
+        case 'REGISTER_PLUGIN':
+          state.registerPlugin(action.payload);
           break;
-        default:
-          console.warn(`Unknown action type: ${action.type}`);
+        case 'UNREGISTER_PLUGIN':
+          state.unregisterPlugin(action.payload);
+          break;
+        case 'SET_SAVE_STATUS':
+          state.saveStatus = action.payload;
+          break;
+        case 'SET_TOOLBAR_POSITION':
+          state.setToolbarPosition(action.payload);
+          break;
+        case 'SET_SHOW_TOOLBAR':
+          state.setShowToolbar(action.payload);
+          break;
+        default: {
+          const _exhaustiveCheck: never = action;
+          console.warn(`Unknown action type: ${(action as any).type}`);
+        }
       }
     },
 

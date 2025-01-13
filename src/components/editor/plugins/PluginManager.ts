@@ -3,13 +3,14 @@ import type {
   IPlugin,
   IPluginEventBus,
   PluginEventHandler,
+  EditorEventMap,
 } from '../types/plugin';
 
 export class PluginManager {
   private plugins: Map<string, IPlugin> = new Map();
   eventBus: IPluginEventBus;
   private editor: Editor;
-  private eventHandlers: Map<string, Set<PluginEventHandler>>;
+  private eventHandlers: Map<string, Set<PluginEventHandler<any>>> = new Map();
 
   constructor(editor: Editor) {
     this.editor = editor;
@@ -140,21 +141,30 @@ export class PluginManager {
   }
 
   // Event Bus Implementation
-  emit(event: string, ...args: any[]): void {
+  emit<K extends keyof EditorEventMap>(
+    event: K,
+    ...args: EditorEventMap[K]
+  ): void {
     const handlers = this.eventHandlers.get(event);
     if (handlers) {
       Array.from(handlers).forEach(handler => handler(...args));
     }
   }
 
-  on(event: string, handler: PluginEventHandler): void {
+  on<K extends keyof EditorEventMap>(
+    event: K,
+    handler: PluginEventHandler<K>
+  ): void {
     if (!this.eventHandlers.has(event)) {
       this.eventHandlers.set(event, new Set());
     }
     this.eventHandlers.get(event)!.add(handler);
   }
 
-  off(event: string, handler: PluginEventHandler): void {
+  off<K extends keyof EditorEventMap>(
+    event: K,
+    handler: PluginEventHandler<K>
+  ): void {
     const handlers = this.eventHandlers.get(event);
     if (handlers) {
       handlers.delete(handler);

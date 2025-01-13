@@ -6,6 +6,8 @@ import type {
   Command,
   Decoration,
   IPluginHooks,
+  EditorEventMap,
+  PluginEventHandler,
 } from '../types/plugin';
 import type { Editor, Selection, FormatType } from '../types';
 
@@ -115,15 +117,24 @@ export abstract class BasePlugin<TState = Record<string, unknown>>
   };
 
   // Protected helper methods for plugins to use
-  protected emit(event: string, ...args: any[]): void {
+  protected emit<K extends keyof EditorEventMap>(
+    event: K,
+    ...args: EditorEventMap[K]
+  ): void {
     this.eventBus?.emit(event, ...args);
   }
 
-  protected on(event: string, handler: (...args: any[]) => void): void {
+  protected on<K extends keyof EditorEventMap>(
+    event: K,
+    handler: PluginEventHandler<K>
+  ): void {
     this.eventBus?.on(event, handler);
   }
 
-  protected off(event: string, handler: (...args: any[]) => void): void {
+  protected off<K extends keyof EditorEventMap>(
+    event: K,
+    handler: PluginEventHandler<K>
+  ): void {
     this.eventBus?.off(event, handler);
   }
 

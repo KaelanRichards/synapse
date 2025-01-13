@@ -1,5 +1,5 @@
 import { BasePlugin, createPluginConfig } from './BasePlugin';
-import type { FormatType } from '../types';
+import type { FormatType, CommandMap } from '../types';
 
 interface FormatState extends Record<string, unknown> {
   lastFormat: FormatType | null;
@@ -64,8 +64,9 @@ export class FormatPlugin extends BasePlugin<FormatState> {
 
   private setupCommands(): void {
     formatTypes.forEach(type => {
+      const commandId = `format:${type}` as keyof CommandMap;
       this.registerCommand({
-        id: `format:${type}`,
+        id: commandId,
         name: `Format ${type}`,
         description: `Format selection with ${type}`,
         shortcut: shortcuts[type],

@@ -41,7 +41,8 @@ export function useEditorKeyboard() {
             break;
           case 'k':
             e.preventDefault();
-            executeCommand('format-link');
+            const url = prompt('Enter link URL:');
+            if (url) executeCommand('format-link', url);
             break;
           case 'e':
             e.preventDefault();
