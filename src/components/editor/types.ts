@@ -77,16 +77,6 @@ export type FormatType =
   | 'table'
   | 'image';
 
-export interface SearchReplacePluginState {
-  isOpen: boolean;
-  searchTerm: string;
-  replaceTerm: string;
-  matches: number[];
-  currentMatch: number;
-  caseSensitive: boolean;
-  useRegex: boolean;
-}
-
 export interface AutosavePluginState {
   saveStatus: 'saved' | 'saving' | 'unsaved' | 'error';
   lastSavedContent: string;

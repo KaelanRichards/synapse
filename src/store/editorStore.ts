@@ -2,9 +2,8 @@ import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { enableMapSet } from 'immer';
 import type { EditorStore } from './types';
-import { FormatPlugin } from '@/components/editor/plugins/FormatPlugin';
-import { SearchReplacePlugin } from '@/components/editor/plugins/SearchReplacePlugin';
 import { AutosavePlugin } from '@/components/editor/plugins/AutosavePlugin';
+import { FormatPlugin } from '@/components/editor/plugins/FormatPlugin';
 import { MarkdownPlugin } from '@/components/editor/plugins/MarkdownPlugin';
 import type {
   Command,
@@ -372,9 +371,8 @@ const useEditorStore = create<EditorStore>()(
 
         // Register plugins
         const plugins: Plugin[] = [
-          new FormatPlugin(),
-          new SearchReplacePlugin(),
           new AutosavePlugin(),
+          new FormatPlugin(),
           new MarkdownPlugin(),
         ];
 
@@ -453,9 +451,8 @@ const useEditorStore = create<EditorStore>()(
 
         // Then initialize
         const plugins: Plugin[] = [
-          new FormatPlugin(),
-          new SearchReplacePlugin(),
           new AutosavePlugin(),
+          new FormatPlugin(),
           new MarkdownPlugin(),
         ];
 
