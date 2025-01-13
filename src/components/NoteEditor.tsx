@@ -78,7 +78,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
   return (
     <div
       className={cn(
-        'h-screen transition-all duration-300',
+        'h-full w-full transition-all duration-300',
         'bg-surface-pure dark:bg-surface-dark',
         'flex flex-col',
         isLocalFocusMode && 'bg-opacity-98'
@@ -87,7 +87,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
       {/* Editor Header */}
       <div
         className={cn(
-          'flex items-center justify-between px-6 py-3',
+          'flex items-center justify-between px-6 py-3 shrink-0',
           'border-b border-gray-200 dark:border-gray-800',
           'transition-opacity duration-300',
           isLocalFocusMode && 'opacity-0 hover:opacity-100'
@@ -145,7 +145,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
       </div>
 
       {/* Editor Content */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-y-auto">
         <div
           className={cn(
             'max-w-2xl mx-auto transition-all duration-300',
@@ -160,7 +160,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
             }}
             placeholder="Begin writing..."
             className={cn(
-              'w-full min-h-[calc(100vh-12rem)] bg-transparent border-0 focus:ring-0',
+              'w-full min-h-[calc(100vh-16rem)] bg-transparent border-0 focus:ring-0',
               'resize-none focus:outline-none',
               'text-ink-rich dark:text-ink-inverse',
               'transition-all duration-300',

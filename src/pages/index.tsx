@@ -11,7 +11,6 @@ export default function Home() {
   const { state: editorState } = useEditor();
   const { createNote } = useNoteMutations();
   const [content, setContent] = useState('');
-  const [showHint, setShowHint] = useState(true);
   const [isReady, setIsReady] = useState(false);
 
   // Enable typewriter sound on mount
@@ -26,13 +25,6 @@ export default function Home() {
     const timer = setTimeout(() => setIsReady(true), 100);
     return () => clearTimeout(timer);
   }, []);
-
-  // Hide hint after user starts typing
-  useEffect(() => {
-    if (content && showHint) {
-      setShowHint(false);
-    }
-  }, [content]);
 
   // Create note when content is substantial
   useEffect(() => {
@@ -92,19 +84,6 @@ export default function Home() {
             fontSize: `${editorState.fontSize}px`,
           }}
         />
-
-        {showHint && (
-          <div
-            className={cn(
-              'absolute inset-0 pointer-events-none',
-              'flex items-center justify-center',
-              'text-ink-faint/20 text-lg italic font-light',
-              'transition-opacity duration-slow ease-gentle'
-            )}
-          >
-            Press ⌘K for commands
-          </div>
-        )}
       </div>
     </main>
   );
