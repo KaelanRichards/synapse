@@ -11,6 +11,7 @@ import {
   ChevronRightIcon,
   ArrowsPointingInIcon,
   ArrowsPointingOutIcon,
+  PowerIcon,
 } from '@heroicons/react/24/outline';
 import { useRouter } from 'next/router';
 import { cn } from '@/lib/utils';
@@ -22,7 +23,7 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
-  const { session } = useAuth();
+  const { session, signOut } = useAuth();
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = useState(false);
@@ -108,6 +109,17 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           ) : (
             <ArrowsPointingInIcon className="h-6 w-6" />
           )}
+        </button>
+
+        <button
+          onClick={signOut}
+          className={cn(
+            'p-2 rounded-md transition-colors duration-200',
+            'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white',
+            'hover:bg-gray-100 dark:hover:bg-gray-800'
+          )}
+        >
+          <PowerIcon className="h-6 w-6" />
         </button>
 
         <button
