@@ -3,8 +3,7 @@ import { useRouter } from 'next/router';
 import { useNote } from '@/hooks/useNote';
 import { useAuth } from '@/contexts/AuthContext';
 import { NextPage } from 'next';
-import NoteEditor from '@/components/NoteEditor';
-
+import { NoteEditor } from '@/components/editor/NoteEditor';
 const NoteDetail: NextPage = () => {
   const { session } = useAuth();
   const router = useRouter();

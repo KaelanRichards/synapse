@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { playTypewriterSound, enableTypewriterSound } from '@/lib/sounds';
 import { useEditor } from '@/contexts/EditorContext';
 import { useNoteMutations } from '@/hooks/useNoteMutations';
+import Layout from '@/components/Layout';
 
 export default function Home() {
   const router = useRouter();
@@ -49,42 +50,44 @@ export default function Home() {
   }, [content, createNote, router]);
 
   return (
-    <main className="min-h-screen bg-surface-pure dark:bg-surface-dark">
-      <div
-        className={cn(
-          'max-w-prose mx-auto px-4 pt-16 relative',
-          'opacity-0 transition-opacity duration-slow ease-gentle',
-          isReady && 'opacity-100'
-        )}
-      >
-        <Textarea
-          autoFocus
-          value={content}
-          onChange={e => {
-            setContent(e.target.value);
-            if (editorState.soundEnabled) {
-              const lastChar = e.target.value.slice(-1);
-              if (lastChar) playTypewriterSound(lastChar);
-            }
-          }}
-          placeholder="Begin writing..."
+    <Layout>
+      <div className="min-h-screen bg-surface-pure dark:bg-surface-dark">
+        <div
           className={cn(
-            'min-h-[80vh] w-full bg-transparent border-0 focus:ring-0',
-            'text-xl leading-relaxed text-ink-rich dark:text-ink-inverse',
-            'placeholder:text-ink-faint/30 placeholder:italic placeholder:font-light',
-            'resize-none transition-all duration-normal ease-gentle',
-            'tracking-normal',
-            {
-              'font-serif': editorState.fontFamily === 'serif',
-              'font-sans': editorState.fontFamily === 'sans',
-              'font-mono': editorState.fontFamily === 'mono',
-            }
+            'max-w-prose mx-auto px-4 pt-16 relative',
+            'opacity-0 transition-opacity duration-slow ease-gentle',
+            isReady && 'opacity-100'
           )}
-          style={{
-            fontSize: `${editorState.fontSize}px`,
-          }}
-        />
+        >
+          <Textarea
+            autoFocus
+            value={content}
+            onChange={e => {
+              setContent(e.target.value);
+              if (editorState.soundEnabled) {
+                const lastChar = e.target.value.slice(-1);
+                if (lastChar) playTypewriterSound(lastChar);
+              }
+            }}
+            placeholder="Begin writing..."
+            className={cn(
+              'min-h-[80vh] w-full bg-transparent border-0 focus:ring-0',
+              'text-xl leading-relaxed text-ink-rich dark:text-ink-inverse',
+              'placeholder:text-ink-faint/30 placeholder:italic placeholder:font-light',
+              'resize-none transition-all duration-normal ease-gentle',
+              'tracking-normal',
+              {
+                'font-serif': editorState.fontFamily === 'serif',
+                'font-sans': editorState.fontFamily === 'sans',
+                'font-mono': editorState.fontFamily === 'mono',
+              }
+            )}
+            style={{
+              fontSize: `${editorState.fontSize}px`,
+            }}
+          />
+        </div>
       </div>
-    </main>
+    </Layout>
   );
 }
