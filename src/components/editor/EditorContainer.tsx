@@ -9,8 +9,6 @@ interface EditorContainerProps {
   showToolbar: boolean;
   toolbarPosition: { x: number; y: number };
   commands: Map<string, Command>;
-  isLocalFocusMode: boolean;
-  isParagraphFocus: boolean;
   textareaRef: React.RefObject<HTMLTextAreaElement>;
   onContentChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
   onSelectionChange: (selection: Selection | null) => void;
@@ -21,8 +19,6 @@ export const EditorContainer: React.FC<EditorContainerProps> = ({
   showToolbar,
   toolbarPosition,
   commands,
-  isLocalFocusMode,
-  isParagraphFocus,
   textareaRef,
   onContentChange,
   onSelectionChange,
@@ -41,8 +37,6 @@ export const EditorContainer: React.FC<EditorContainerProps> = ({
         onChange={onContentChange}
         onSelect={onSelectionChange}
         textareaRef={textareaRef}
-        isLocalFocusMode={isLocalFocusMode}
-        isParagraphFocus={isParagraphFocus}
       />
 
       {/* Portal the toolbar to the document body */}

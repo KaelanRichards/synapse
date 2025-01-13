@@ -101,21 +101,9 @@ export interface EditorState {
     readingTime: number;
   };
   saveStatus: 'saved' | 'saving' | 'error' | 'unsaved';
-  isLocalFocusMode: boolean;
-  isParagraphFocus: boolean;
   isAmbientSound: boolean;
   showToolbar: boolean;
   toolbarPosition: { x: number; y: number };
-  focusMode: {
-    enabled: boolean;
-    hideCommands: boolean;
-    dimSurroundings: boolean;
-  };
-  typewriterMode: {
-    enabled: boolean;
-    sound: boolean;
-    scrollIntoView: boolean;
-  };
 }
 
 export interface EditorProps {

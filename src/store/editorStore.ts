@@ -163,21 +163,9 @@ const useEditorStore = create<EditorStore>()(
     },
 
     // UI actions
-    toggleFocusMode: () =>
-      set(state => {
-        state.focusMode.enabled = !state.focusMode.enabled;
-      }),
-    toggleParagraphFocus: () =>
-      set(state => {
-        state.isParagraphFocus = !state.isParagraphFocus;
-      }),
     toggleAmbientSound: () =>
       set(state => {
         state.isAmbientSound = !state.isAmbientSound;
-      }),
-    toggleTypewriterMode: () =>
-      set(state => {
-        state.typewriterMode.enabled = !state.typewriterMode.enabled;
       }),
     setToolbarPosition: position =>
       set(state => {
@@ -186,10 +174,6 @@ const useEditorStore = create<EditorStore>()(
     setShowToolbar: show =>
       set(state => {
         state.showToolbar = show;
-      }),
-    setTypewriterMode: settings =>
-      set(state => {
-        state.typewriterMode = { ...state.typewriterMode, ...settings };
       }),
 
     // Plugin actions

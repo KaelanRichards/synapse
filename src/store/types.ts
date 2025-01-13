@@ -102,13 +102,9 @@ export type UIState = WritableDraft<{
 }>;
 
 export interface UIActions {
-  toggleFocusMode: () => void;
-  toggleParagraphFocus: () => void;
   toggleAmbientSound: () => void;
-  toggleTypewriterMode: () => void;
   setToolbarPosition: (position: { x: number; y: number }) => void;
   setShowToolbar: (show: boolean) => void;
-  setTypewriterMode: (settings: Partial<UIState['typewriterMode']>) => void;
 }
 
 export type UISlice = UIState & UIActions;
