@@ -6,11 +6,6 @@ interface UIState {
   theme: 'light' | 'dark' | 'system';
   fontSize: number;
   fontFamily: 'serif' | 'sans' | 'mono';
-  focusMode: {
-    enabled: boolean;
-    hideCommands: boolean;
-    dimSurroundings: boolean;
-  };
   typewriterMode: {
     enabled: boolean;
     sound: boolean;
@@ -22,7 +17,6 @@ interface UIActions {
   setTheme: (theme: UIState['theme']) => void;
   setFontSize: (size: number) => void;
   setFontFamily: (family: UIState['fontFamily']) => void;
-  setFocusMode: (settings: Partial<UIState['focusMode']>) => void;
   setTypewriterMode: (settings: Partial<UIState['typewriterMode']>) => void;
 }
 
@@ -30,11 +24,6 @@ const initialState: UIState = {
   theme: 'system',
   fontSize: 16,
   fontFamily: 'sans',
-  focusMode: {
-    enabled: false,
-    hideCommands: false,
-    dimSurroundings: false,
-  },
   typewriterMode: {
     enabled: false,
     sound: false,
@@ -53,11 +42,6 @@ export const useUIStore = create<UIState & UIActions>()(
         setFontSize: fontSize => set({ fontSize }),
 
         setFontFamily: fontFamily => set({ fontFamily }),
-
-        setFocusMode: settings =>
-          set(state => {
-            state.focusMode = { ...state.focusMode, ...settings };
-          }),
 
         setTypewriterMode: settings =>
           set(state => {

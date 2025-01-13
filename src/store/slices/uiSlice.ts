@@ -3,7 +3,6 @@ import type { StateCreator } from 'zustand';
 import type { EditorStore } from '../types';
 
 interface UISliceState {
-  isLocalFocusMode: boolean;
   isParagraphFocus: boolean;
   isAmbientSound: boolean;
   showToolbar: boolean;
@@ -16,7 +15,6 @@ interface UISliceState {
 }
 
 interface UISliceActions {
-  toggleFocusMode: () => void;
   toggleParagraphFocus: () => void;
   toggleAmbientSound: () => void;
   toggleTypewriterMode: () => void;
@@ -34,7 +32,6 @@ export const createUISlice: StateCreator<
   UISlice
 > = set => ({
   // Editor-specific UI state
-  isLocalFocusMode: false,
   isParagraphFocus: false,
   isAmbientSound: false,
   showToolbar: false,
@@ -46,12 +43,6 @@ export const createUISlice: StateCreator<
   },
 
   // Editor-specific UI actions
-  toggleFocusMode: () =>
-    set((state: EditorStore) => {
-      state.isLocalFocusMode = !state.isLocalFocusMode;
-      return state;
-    }),
-
   toggleParagraphFocus: () =>
     set((state: EditorStore) => {
       state.isParagraphFocus = !state.isParagraphFocus;

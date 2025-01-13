@@ -19,12 +19,10 @@ export function CommandPalette() {
   const router = useRouter();
   const { notes } = useNoteList();
   const {
-    focusMode,
     typewriterMode,
     setTheme,
     setFontFamily,
     setFontSize,
-    setFocusMode,
     setTypewriterMode,
   } = useUIStore();
 
@@ -63,15 +61,6 @@ export function CommandPalette() {
 
         <Command.List className="mt-4 rounded-lg border border-ink-faint/20 bg-surface-pure dark:bg-surface-dark overflow-hidden">
           <Command.Group heading="Quick Actions">
-            <Command.Item
-              onSelect={() => {
-                setFocusMode({ enabled: !focusMode.enabled });
-                setOpen(false);
-              }}
-              className="px-4 py-2 hover:bg-surface-faint dark:hover:bg-surface-dim/10 cursor-pointer"
-            >
-              Toggle Focus Mode
-            </Command.Item>
             <Command.Item
               onSelect={() => {
                 setTypewriterMode({ enabled: !typewriterMode.enabled });

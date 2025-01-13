@@ -156,23 +156,6 @@
   }
 }
 
-/* Paragraph Focus Mode */
-.focus-paragraph {
-  & p {
-    transition: opacity 0.3s ease;
-    opacity: 0.4;
-  }
-
-  &:focus p {
-    opacity: 0.4;
-  }
-
-  /* The paragraph being edited gets full opacity */
-  &:focus p:focus-within {
-    opacity: 1;
-  }
-}
-
 /* Floating Toolbar Animation */
 @keyframes toolbarFadeIn {
   from {

@@ -26,11 +26,9 @@ export interface EditorToolbarProps {
 export const EditorToolbar: React.FC<EditorToolbarProps> = ({
   stats,
   saveStatus,
-  isLocalFocusMode,
   isParagraphFocus,
   isAmbientSound,
   isTypewriterMode,
-  onToggleFocusMode,
   onToggleParagraphFocus,
   onToggleAmbientSound,
   onToggleTypewriterMode,
@@ -40,18 +38,6 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
       {/* Left side - Writing modes */}
       <div className="flex items-center space-x-2">
         <div className="flex items-center space-x-1 border-r border-neutral-200 dark:border-neutral-800 pr-2">
-          <Tooltip content="Focus Mode (⌘F)">
-            <button
-              onClick={onToggleFocusMode}
-              className={`p-1.5 rounded-md transition-colors ${
-                isLocalFocusMode
-                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                  : 'hover:bg-neutral-100 dark:hover:bg-neutral-800'
-              }`}
-            >
-              <ViewfinderCircleIcon className="w-4 h-4" />
-            </button>
-          </Tooltip>
           <Tooltip content="Paragraph Focus (⌘P)">
             <button
               onClick={onToggleParagraphFocus}
