@@ -1,58 +1,106 @@
-import * as React from 'react';
-import * as TabsPrimitive from '@radix-ui/react-tabs';
 import { cn } from '@/lib/utils';
+import { Tab } from '@headlessui/react';
+import { ReactNode } from 'react';
 
-const Tabs = TabsPrimitive.Root;
+interface TabsProps {
+  value: string;
+  onValueChange: (value: string) => void;
+  children: ReactNode;
+  orientation?: 'horizontal' | 'vertical';
+}
 
-const TabsList = React.forwardRef<
-  React.ElementRef<typeof TabsPrimitive.List>,
-  React.ComponentPropsWithoutRef<typeof TabsPrimitive.List>
->(({ className, ...props }, ref) => (
-  <TabsPrimitive.List
-    ref={ref}
-    className={cn(
-      'inline-flex items-center justify-center',
-      'data-[orientation=horizontal]:border-b data-[orientation=horizontal]:border-ink-faint/20',
-      'data-[orientation=vertical]:flex-col',
-      className
-    )}
-    {...props}
-  />
-));
-TabsList.displayName = TabsPrimitive.List.displayName;
+export function Tabs({
+  value,
+  onValueChange,
+  children,
+  orientation = 'horizontal',
+}: TabsProps) {
+  // Convert string value to numeric index for Headless UI
+  const selectedIndex = parseInt(value) || 0;
+  const handleChange = (index: number) => {
+    if (onValueChange) {
+      onValueChange(index.toString());
+    }
+  };
 
-const TabsTrigger = React.forwardRef<
-  React.ElementRef<typeof TabsPrimitive.Trigger>,
-  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger>
->(({ className, ...props }, ref) => (
-  <TabsPrimitive.Trigger
-    ref={ref}
-    className={cn(
-      'inline-flex items-center justify-center whitespace-nowrap px-3 py-1.5',
-      'text-sm font-medium ring-offset-surface-pure transition-all',
-      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary focus-visible:ring-offset-2',
-      'disabled:pointer-events-none disabled:opacity-50',
-      'data-[state=active]:bg-accent-primary/10 data-[state=active]:text-accent-primary',
-      className
-    )}
-    {...props}
-  />
-));
-TabsTrigger.displayName = TabsPrimitive.Trigger.displayName;
+  return (
+    <Tab.Group
+      selectedIndex={selectedIndex}
+      onChange={handleChange}
+      vertical={orientation === 'vertical'}
+    >
+      {children}
+    </Tab.Group>
+  );
+}
 
-const TabsContent = React.forwardRef<
-  React.ElementRef<typeof TabsPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Content>
->(({ className, ...props }, ref) => (
-  <TabsPrimitive.Content
-    ref={ref}
-    className={cn(
-      'mt-2 ring-offset-surface-pure focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary focus-visible:ring-offset-2',
-      className
-    )}
-    {...props}
-  />
-));
-TabsContent.displayName = TabsPrimitive.Content.displayName;
+export function TabsList({
+  className,
+  children,
+}: {
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <Tab.List
+      className={cn(
+        'flex gap-2',
+        'border-ink-faint/20 dark:border-ink-faint/10',
+        className
+      )}
+    >
+      {children}
+    </Tab.List>
+  );
+}
 
-export { Tabs, TabsList, TabsTrigger, TabsContent };
+export function TabsTrigger({
+  value,
+  className,
+  children,
+}: {
+  value: string;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <Tab
+      value={value}
+      className={({ selected }) =>
+        cn(
+          'outline-none transition-colors duration-normal ease-gentle',
+          'text-ink-muted dark:text-ink-muted/70',
+          selected &&
+            'text-ink-rich dark:text-ink-inverse bg-surface-faint dark:bg-surface-dim/10',
+          'hover:text-ink-rich hover:dark:text-ink-inverse',
+          'hover:bg-surface-faint hover:dark:bg-surface-dim/10',
+          'focus-visible:ring-2 focus-visible:ring-accent-primary focus-visible:ring-offset-2 dark:focus-visible:ring-offset-surface-dark',
+          className
+        )
+      }
+    >
+      {children}
+    </Tab>
+  );
+}
+
+export function TabsContent({
+  value,
+  className,
+  children,
+}: {
+  value: string;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <Tab.Panel
+      className={cn(
+        'outline-none focus-visible:ring-2 focus-visible:ring-accent-primary focus-visible:ring-offset-2',
+        className
+      )}
+    >
+      {children}
+    </Tab.Panel>
+  );
+}

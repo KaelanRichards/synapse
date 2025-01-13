@@ -31,7 +31,7 @@ export function Tooltip({
       >
         <div
           className={cn(
-            'absolute z-50 px-2 py-1 text-xs font-medium text-ink-inverse bg-ink-rich rounded shadow-floating',
+            'absolute z-50 px-2 py-1 text-xs font-medium text-ink-inverse bg-ink-rich dark:bg-ink-pure rounded shadow-floating dark:shadow-floating/20',
             {
               'bottom-full mb-2': side === 'top',
               'top-1/2 -translate-y-1/2 left-full ml-2': side === 'right',
@@ -58,7 +58,7 @@ export function Tooltip({
           {content}
           <div
             className={cn(
-              'absolute w-2 h-2 bg-ink-rich rotate-45',
+              'absolute w-2 h-2 bg-ink-rich dark:bg-ink-pure rotate-45',
               {
                 'top-full -translate-y-1': side === 'top',
                 '-right-1 translate-x-1/2': side === 'left',

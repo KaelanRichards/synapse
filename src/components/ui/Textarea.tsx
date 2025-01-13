@@ -28,13 +28,17 @@ const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
     return (
       <div className="space-y-1.5">
         {label && (
-          <label className="text-sm font-medium text-ink-rich">{label}</label>
+          <label className="text-sm font-medium text-ink-rich dark:text-ink-inverse">
+            {label}
+          </label>
         )}
         <textarea
           className={cn(
-            'flex w-full rounded-md border border-ink-faint bg-surface-pure px-3 py-2 text-sm text-ink-rich shadow-subtle transition-all duration-normal ease-gentle',
+            'flex w-full rounded-md border border-ink-faint bg-surface-pure px-3 py-2 text-sm shadow-subtle transition-all duration-normal ease-gentle',
+            'text-ink-rich dark:text-ink-inverse dark:bg-surface-dark dark:border-ink-faint/20',
             'min-h-[80px] resize-none',
-            'ring-offset-surface-pure placeholder:text-ink-muted',
+            'ring-offset-surface-pure dark:ring-offset-surface-dark',
+            'placeholder:text-ink-muted dark:placeholder:text-ink-muted/70',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary focus-visible:shadow-floating',
             'disabled:cursor-not-allowed disabled:opacity-50',
             error && 'border-accent-error focus-visible:ring-accent-error',

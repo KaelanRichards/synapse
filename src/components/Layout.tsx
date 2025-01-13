@@ -15,6 +15,7 @@ import {
 import { useRouter } from 'next/router';
 import { cn } from '@/lib/utils';
 import NoteList from '@/components/NoteList';
+import { SettingsModal } from '@/components/SettingsModal';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -26,6 +27,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = useState(false);
   const [isFocusMode, setIsFocusMode] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // Close mobile menu on route change
   useEffect(() => {
@@ -108,8 +110,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           )}
         </button>
 
-        <Link
-          href="/settings"
+        <button
+          onClick={() => setIsSettingsOpen(true)}
           className={cn(
             'p-2 rounded-md transition-colors duration-200',
             'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white',
@@ -117,7 +119,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           )}
         >
           <Cog6ToothIcon className="h-6 w-6" />
-        </Link>
+        </button>
       </nav>
 
       {/* Notes Sidebar */}
@@ -159,7 +161,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 relative w-full overflow-hidden">{children}</main>
+      <main className="flex-1 overflow-y-auto">{children}</main>
+
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+      />
     </div>
   );
 };

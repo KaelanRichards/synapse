@@ -74,7 +74,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
       <Dialog.Portal>
         <Dialog.Overlay
           className={cn(
-            'fixed inset-0 bg-ink-rich/10 backdrop-blur-sm',
+            'fixed inset-0 bg-ink-rich/10 dark:bg-ink-pure/20 backdrop-blur-sm',
             'transition-opacity duration-normal ease-gentle'
           )}
         />
@@ -82,7 +82,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
           className={cn(
             'fixed inset-x-0 top-[20vh] mx-auto max-w-xl rounded-lg',
             'bg-surface-pure dark:bg-surface-dark',
-            'shadow-command border border-ink-faint/10',
+            'shadow-command dark:shadow-command/20 border border-ink-faint/10',
             'transition-all duration-normal ease-gentle'
           )}
         >
@@ -103,11 +103,13 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
               className={cn(
                 'w-full p-4 text-lg',
                 'bg-transparent border-b border-ink-faint/10',
-                'focus:outline-none placeholder:text-ink-faint/50'
+                'focus:outline-none',
+                'text-ink-rich dark:text-ink-inverse',
+                'placeholder:text-ink-faint/50 dark:placeholder:text-ink-faint/30'
               )}
             />
             <Command.List className="max-h-[60vh] overflow-y-auto p-2">
-              <Command.Empty className="p-4 text-center text-ink-faint">
+              <Command.Empty className="p-4 text-center text-ink-faint dark:text-ink-faint/50">
                 No results found.
               </Command.Empty>
 
@@ -115,7 +117,11 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
               <Command.Group heading="Quick Actions">
                 <Command.Item
                   onSelect={() => handleSelect('new')}
-                  className="p-2 cursor-pointer hover:bg-ink-faint/5"
+                  className={cn(
+                    'p-2 cursor-pointer',
+                    'text-ink-rich dark:text-ink-inverse',
+                    'hover:bg-surface-faint dark:hover:bg-surface-dim/10'
+                  )}
                 >
                   Create New Note
                 </Command.Item>
@@ -123,13 +129,21 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
                   <>
                     <Command.Item
                       onSelect={() => handleSelect('save')}
-                      className="p-2 cursor-pointer hover:bg-ink-faint/5"
+                      className={cn(
+                        'p-2 cursor-pointer',
+                        'text-ink-rich dark:text-ink-inverse',
+                        'hover:bg-surface-faint dark:hover:bg-surface-dim/10'
+                      )}
                     >
                       Save Note (⌘S)
                     </Command.Item>
                     <Command.Item
                       onSelect={() => handleSelect('autosave')}
-                      className="p-2 cursor-pointer hover:bg-ink-faint/5"
+                      className={cn(
+                        'p-2 cursor-pointer',
+                        'text-ink-rich dark:text-ink-inverse',
+                        'hover:bg-surface-faint dark:hover:bg-surface-dim/10'
+                      )}
                     >
                       {state.autoSave ? 'Disable' : 'Enable'} Auto-Save
                     </Command.Item>
@@ -141,13 +155,21 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
               <Command.Group heading="Navigation">
                 <Command.Item
                   onSelect={() => handleSelect('all')}
-                  className="p-2 cursor-pointer hover:bg-ink-faint/5"
+                  className={cn(
+                    'p-2 cursor-pointer',
+                    'text-ink-rich dark:text-ink-inverse',
+                    'hover:bg-surface-faint dark:hover:bg-surface-dim/10'
+                  )}
                 >
                   All Notes
                 </Command.Item>
                 <Command.Item
                   onSelect={() => handleSelect('graph')}
-                  className="p-2 cursor-pointer hover:bg-ink-faint/5"
+                  className={cn(
+                    'p-2 cursor-pointer',
+                    'text-ink-rich dark:text-ink-inverse',
+                    'hover:bg-surface-faint dark:hover:bg-surface-dim/10'
+                  )}
                 >
                   Knowledge Graph
                 </Command.Item>
@@ -157,13 +179,21 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
               <Command.Group heading="View">
                 <Command.Item
                   onSelect={() => handleSelect('focus')}
-                  className="p-2 cursor-pointer hover:bg-ink-faint/5"
+                  className={cn(
+                    'p-2 cursor-pointer',
+                    'text-ink-rich dark:text-ink-inverse',
+                    'hover:bg-surface-faint dark:hover:bg-surface-dim/10'
+                  )}
                 >
                   Toggle Focus Mode
                 </Command.Item>
                 <Command.Item
                   onSelect={() => handleSelect('fullscreen')}
-                  className="p-2 cursor-pointer hover:bg-ink-faint/5"
+                  className={cn(
+                    'p-2 cursor-pointer',
+                    'text-ink-rich dark:text-ink-inverse',
+                    'hover:bg-surface-faint dark:hover:bg-surface-dim/10'
+                  )}
                 >
                   Toggle Fullscreen
                 </Command.Item>
@@ -176,7 +206,11 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
                     <Command.Item
                       key={note.id}
                       onSelect={() => router.push(`/notes/${note.id}`)}
-                      className="p-2 cursor-pointer hover:bg-ink-faint/5"
+                      className={cn(
+                        'p-2 cursor-pointer',
+                        'text-ink-rich dark:text-ink-inverse',
+                        'hover:bg-surface-faint dark:hover:bg-surface-dim/10'
+                      )}
                     >
                       {note.title || 'Untitled Note'}
                     </Command.Item>

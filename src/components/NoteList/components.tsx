@@ -29,8 +29,8 @@ export const LoadingSkeleton = () => (
   <div className="space-y-3">
     {[1, 2, 3].map(i => (
       <div key={i} className="animate-pulse">
-        <div className="h-5 bg-accent-100 rounded-sm w-3/4 mb-1.5"></div>
-        <div className="h-12 bg-accent-50 rounded-sm w-full"></div>
+        <div className="h-5 bg-surface-dim dark:bg-surface-dim/20 rounded-sm w-3/4 mb-1.5"></div>
+        <div className="h-12 bg-surface-faint dark:bg-surface-dim/10 rounded-sm w-full"></div>
       </div>
     ))}
   </div>
@@ -47,7 +47,7 @@ export const SearchBar = ({
 }) => (
   <div className="flex items-center space-x-2">
     <div className="relative flex-1">
-      <MagnifyingGlassIcon className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
+      <MagnifyingGlassIcon className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted dark:text-ink-muted/70" />
       <Input
         type="text"
         placeholder="Search notes..."
@@ -57,7 +57,7 @@ export const SearchBar = ({
       />
     </div>
     <Button variant="ghost" size="sm" onClick={onToggleFilters} className="p-2">
-      <FunnelIcon className="h-4 w-4" />
+      <FunnelIcon className="h-4 w-4 text-ink-muted dark:text-ink-muted/70" />
     </Button>
   </div>
 );
@@ -129,17 +129,19 @@ export const NoteItem = React.memo(
       <div
         className={cn(
           'group relative rounded-lg transition-all duration-normal ease-gentle',
-          isActive ? 'bg-accent-primary/10' : 'hover:bg-surface-faint',
-          isDragging && 'shadow-floating'
+          isActive
+            ? 'bg-accent-primary/10 dark:bg-accent-primary/20'
+            : 'hover:bg-surface-faint dark:hover:bg-surface-dim/10',
+          isDragging && 'shadow-floating dark:shadow-floating/20'
         )}
       >
         <a onClick={handleClick} className="block p-2">
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <h3 className="font-medium text-sm text-ink-rich line-clamp-1">
+              <h3 className="font-medium text-sm text-ink-rich dark:text-ink-inverse line-clamp-1">
                 {note.title || 'Untitled Note'}
               </h3>
-              <p className="text-xs text-ink-muted line-clamp-2 mt-1">
+              <p className="text-xs text-ink-muted dark:text-ink-muted/70 line-clamp-2 mt-1">
                 {truncatedContent}
               </p>
             </div>
@@ -153,7 +155,7 @@ export const NoteItem = React.memo(
                   'p-1 rounded-md transition-all duration-normal ease-gentle',
                   note.is_pinned
                     ? 'text-accent-warning'
-                    : 'text-ink-muted hover:text-ink-rich opacity-0 group-hover:opacity-100'
+                    : 'text-ink-muted hover:text-ink-rich dark:text-ink-muted/70 dark:hover:text-ink-inverse opacity-0 group-hover:opacity-100'
                 )}
               >
                 {note.is_pinned ? (
@@ -203,18 +205,18 @@ export const SortableNoteItem = React.memo(
         style={style}
         className={cn(
           'transition-shadow duration-200 relative group',
-          isDragging && 'shadow-lg'
+          isDragging && 'shadow-lg dark:shadow-lg/20'
         )}
       >
         <div className="flex">
           <div
             {...attributes}
             {...listeners}
-            className="w-8 flex-shrink-0 cursor-grab active:cursor-grabbing flex items-center justify-center hover:bg-accent-50/50 dark:hover:bg-accent-900/10"
+            className="w-8 flex-shrink-0 cursor-grab active:cursor-grabbing flex items-center justify-center hover:bg-surface-faint dark:hover:bg-surface-dim/10"
             onClick={e => e.stopPropagation()}
           >
             <svg
-              className="w-4 h-4 text-gray-400"
+              className="w-4 h-4 text-ink-muted dark:text-ink-muted/70"
               viewBox="0 0 16 16"
               fill="currentColor"
             >

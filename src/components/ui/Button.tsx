@@ -10,10 +10,11 @@ const buttonVariants = cva(
         primary:
           'bg-accent-primary text-ink-inverse hover:bg-accent-primary/90 shadow-subtle hover:shadow-floating',
         secondary:
-          'bg-surface-faint text-ink-rich hover:bg-surface-dim shadow-subtle',
+          'bg-surface-faint text-ink-rich hover:bg-surface-dim shadow-subtle dark:bg-surface-dark dark:text-ink-inverse dark:hover:bg-surface-dim/10',
         outline:
-          'border border-ink-faint bg-transparent hover:bg-surface-faint',
-        ghost: 'hover:bg-surface-faint',
+          'border border-ink-faint bg-transparent hover:bg-surface-faint text-ink-rich dark:text-ink-inverse dark:border-ink-faint/20 dark:hover:bg-surface-dim/10',
+        ghost:
+          'hover:bg-surface-faint text-ink-rich dark:text-ink-inverse dark:hover:bg-surface-dim/10',
         danger: 'bg-accent-error text-ink-inverse hover:bg-accent-error/90',
       },
       size: {

@@ -7,8 +7,10 @@ const toggleVariants = cva(
   {
     variants: {
       variant: {
-        default: 'bg-transparent',
-        outline: 'border border-ink-faint hover:bg-surface-faint',
+        default:
+          'bg-transparent dark:data-[state=off]:bg-surface-dark dark:data-[state=off]:hover:bg-surface-dim/10',
+        outline:
+          'border border-ink-faint hover:bg-surface-faint dark:border-ink-faint/20 dark:hover:bg-surface-dim/10',
       },
       size: {
         sm: 'h-8 px-3 text-xs',
@@ -48,4 +50,4 @@ const Toggle = forwardRef<HTMLButtonElement, ToggleProps>(
 
 Toggle.displayName = 'Toggle';
 
-export { Toggle };
+export { Toggle, toggleVariants };

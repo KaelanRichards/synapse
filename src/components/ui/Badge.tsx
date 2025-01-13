@@ -8,14 +8,15 @@ const badgeVariants = cva(
     variants: {
       variant: {
         default:
-          'bg-accent-primary/15 text-ink-rich border border-accent-primary/30',
+          'bg-accent-primary/15 text-ink-rich dark:text-ink-inverse border border-accent-primary/30',
         secondary:
-          'bg-surface-dim/15 text-ink-rich border border-surface-dim/30',
+          'bg-surface-dim/15 text-ink-rich dark:text-ink-inverse border border-surface-dim/30 dark:border-surface-dim/20',
         success:
-          'bg-accent-success/15 text-ink-rich border border-accent-success/30',
-        error: 'bg-accent-error/15 text-ink-rich border border-accent-error/30',
+          'bg-accent-success/15 text-ink-rich dark:text-ink-inverse border border-accent-success/30',
+        error:
+          'bg-accent-error/15 text-ink-rich dark:text-ink-inverse border border-accent-error/30',
         warning:
-          'bg-accent-warning/15 text-ink-rich border border-accent-warning/30',
+          'bg-accent-warning/15 text-ink-rich dark:text-ink-inverse border border-accent-warning/30',
       },
     },
     defaultVariants: {
