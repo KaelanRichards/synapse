@@ -16,4 +16,26 @@ BEGIN
         ) t
         WHERE notes.id = t.id;
     END IF;
-END $$; 
+END $$;
+
+-- Create a type for the note order updates
+CREATE TYPE note_order_update AS (
+    id UUID,
+    new_order INTEGER
+);
+
+-- Create a function to handle batch updates of note orders
+CREATE OR REPLACE FUNCTION batch_update_note_orders(note_updates note_order_update[])
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+    -- Perform all updates in a single transaction
+    FOR i IN 1..array_length(note_updates, 1) LOOP
+        UPDATE notes
+        SET display_order = (note_updates[i]).new_order
+        WHERE id = (note_updates[i]).id;
+    END LOOP;
+END;
+$$; 

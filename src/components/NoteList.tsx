@@ -11,7 +11,23 @@ import {
   ArrowsUpDownIcon,
 } from '@heroicons/react/24/outline';
 import { cn } from '@/lib/utils';
-import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { PostgrestError } from '@supabase/supabase-js';
 
 type MaturityState = 'SEED' | 'SAPLING' | 'GROWTH' | 'MATURE' | 'EVOLVING';
@@ -97,8 +113,7 @@ const NoteItem: React.FC<{
   isActive?: boolean;
   onTogglePin?: (noteId: string) => void;
   isDragging?: boolean;
-  dragHandleProps?: any;
-}> = ({ note, isActive, onTogglePin, isDragging, dragHandleProps }) => {
+}> = ({ note, isActive, onTogglePin, isDragging }) => {
   const truncatedContent =
     note.content.length > 120
       ? note.content.slice(0, 120) + '...'
@@ -113,13 +128,23 @@ const NoteItem: React.FC<{
           : 'hover:bg-accent-50/50 dark:hover:bg-accent-900/10',
         isDragging && 'shadow-lg'
       )}
-      {...dragHandleProps}
     >
-      <Link href={`/notes/${note.id}`} className="block p-2">
+      <div className="block p-2">
         <div className="flex items-center justify-between">
-          <h3 className="font-medium text-sm text-ink-rich dark:text-ink-inverse line-clamp-1">
-            {note.title || 'Untitled Note'}
-          </h3>
+          <Link
+            href={`/notes/${note.id}`}
+            className="flex-1 cursor-pointer"
+            onClick={e => {
+              // Prevent navigation if we're dragging
+              if (isDragging) {
+                e.preventDefault();
+              }
+            }}
+          >
+            <h3 className="font-medium text-sm text-ink-rich dark:text-ink-inverse line-clamp-1">
+              {note.title || 'Untitled Note'}
+            </h3>
+          </Link>
           {onTogglePin && (
             <button
               onClick={e => {
@@ -141,10 +166,55 @@ const NoteItem: React.FC<{
             </button>
           )}
         </div>
-      </Link>
+      </div>
     </div>
   );
 };
+
+const SortableNote = React.memo(
+  ({
+    note,
+    onTogglePin,
+  }: {
+    note: Note;
+    onTogglePin?: (noteId: string) => void;
+  }) => {
+    const {
+      attributes,
+      listeners,
+      setNodeRef,
+      transform,
+      transition,
+      isDragging,
+    } = useSortable({ id: note.id });
+
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+    };
+
+    return (
+      <div
+        ref={setNodeRef}
+        style={style}
+        {...attributes}
+        {...listeners}
+        className={cn(
+          'transition-shadow duration-200',
+          isDragging && 'shadow-lg'
+        )}
+      >
+        <NoteItem
+          note={note}
+          onTogglePin={onTogglePin}
+          isDragging={isDragging}
+        />
+      </div>
+    );
+  }
+);
+
+SortableNote.displayName = 'SortableNote';
 
 export default function NoteList() {
   const supabase = useSupabase();
@@ -154,6 +224,13 @@ export default function NoteList() {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('manual');
   const [showFilters, setShowFilters] = useState(false);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   // Set up real-time subscription
   useEffect(() => {
@@ -165,6 +242,7 @@ export default function NoteList() {
           event: '*',
           schema: 'public',
           table: 'notes',
+          filter: 'is_pinned = true OR is_pinned = false', // Only listen for pin changes
         },
         () => {
           queryClient.invalidateQueries({
@@ -200,7 +278,7 @@ export default function NoteList() {
       return data as Note[];
     },
     staleTime: 30000,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false, // Disable automatic refetch on window focus
     retry: 2,
   });
 
@@ -218,85 +296,102 @@ export default function NoteList() {
     }
   };
 
-  const handleDragEnd = async (result: any) => {
-    if (!result.destination || !notes) return;
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
 
-    const sourceIndex = result.source.index;
-    const destinationIndex = result.destination.index;
+    if (!over || !notes) return;
 
-    // Update the local state optimistically
-    const newNotes = Array.from(notes);
-    const [removed] = newNotes.splice(sourceIndex, 1);
-    newNotes.splice(destinationIndex, 0, removed);
+    if (active.id !== over.id) {
+      const oldIndex = notes.findIndex(note => note.id === active.id);
+      const newIndex = notes.findIndex(note => note.id === over.id);
 
-    // Calculate new display orders
-    const updatedNotes = newNotes.map((note, index) => ({
-      ...note,
-      display_order: index + 1,
-    }));
+      const newNotes = arrayMove(notes, oldIndex, newIndex);
 
-    // Update the cache optimistically
-    queryClient.setQueryData(['notes', selectedMaturity], updatedNotes);
+      // Calculate new display orders with larger gaps
+      const updatedNotes = newNotes.map((note, index) => ({
+        ...note,
+        display_order: (index + 1) * 1000,
+      }));
 
-    // Update the database
-    const updates = updatedNotes.map(note => ({
-      id: note.id,
-      display_order: note.display_order,
-    }));
+      // Update the cache optimistically
+      queryClient.setQueryData(['notes', selectedMaturity], updatedNotes);
 
-    for (const update of updates) {
-      await supabase
-        .from('notes')
-        .update({ display_order: update.display_order })
-        .eq('id', update.id);
+      try {
+        // Update all notes in a single transaction using individual updates
+        const promises = updatedNotes.map(note =>
+          supabase
+            .from('notes')
+            .update({ display_order: note.display_order })
+            .eq('id', note.id)
+        );
+
+        const results = await Promise.all(promises);
+        const errors = results.filter(r => r.error).map(r => r.error);
+
+        if (errors.length > 0) {
+          console.error('Some updates failed:', errors);
+          // Revert optimistic update on error
+          queryClient.setQueryData(['notes', selectedMaturity], notes);
+          return;
+        }
+
+        // Don't invalidate the query, we've already updated the cache
+      } catch (error) {
+        console.error('Failed to update note orders:', error);
+        // Revert optimistic update on error
+        queryClient.setQueryData(['notes', selectedMaturity], notes);
+      }
     }
   };
 
   const filteredNotes = React.useMemo(() => {
-    if (!notes) return { pinnedNotes: [], unpinnedNotes: [] };
-
-    let filtered = notes;
+    if (!notes) return [];
+    let filtered = [...notes];
 
     // Apply search filter
     if (searchQuery) {
-      const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
         note =>
-          note.title.toLowerCase().includes(query) ||
-          note.content.toLowerCase().includes(query)
+          note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          note.content.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
 
-    // Apply sorting
-    filtered = [...filtered].sort((a, b) => {
-      if (sortBy === 'title') {
-        return (a.title || '').localeCompare(b.title || '');
-      }
-      if (sortBy === 'maturity') {
-        const maturityOrder = MATURITY_OPTIONS.map(opt => opt.value);
-        return (
-          maturityOrder.indexOf(a.maturity_state) -
-          maturityOrder.indexOf(b.maturity_state)
+    // Apply sort
+    switch (sortBy) {
+      case 'recent':
+        filtered.sort(
+          (a, b) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         );
-      }
-      if (sortBy === 'recent') {
-        return (
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        break;
+      case 'title':
+        filtered.sort((a, b) => a.title.localeCompare(b.title));
+        break;
+      case 'maturity':
+        const maturityOrder = [
+          'SEED',
+          'SAPLING',
+          'GROWTH',
+          'MATURE',
+          'EVOLVING',
+        ];
+        filtered.sort(
+          (a, b) =>
+            maturityOrder.indexOf(a.maturity_state) -
+            maturityOrder.indexOf(b.maturity_state)
         );
-      }
-      // Default to manual order
-      return a.display_order - b.display_order;
-    });
+        break;
+      case 'manual':
+        filtered.sort((a, b) => a.display_order - b.display_order);
+        break;
+    }
 
-    return {
-      pinnedNotes: filtered.filter(note => note.is_pinned),
-      unpinnedNotes: filtered.filter(note => !note.is_pinned),
-    };
+    return filtered;
   }, [notes, searchQuery, sortBy]);
 
   if (isLoading) return <LoadingSkeleton />;
-  if (error)
-    return <Alert variant="error">{(error as PostgrestError).message}</Alert>;
+  if (error) return <Alert variant="error">Failed to load notes</Alert>;
 
   return (
     <div className="space-y-4">
@@ -348,73 +443,26 @@ export default function NoteList() {
         </div>
       )}
 
-      <DragDropContext onDragEnd={handleDragEnd}>
-        <div className="space-y-6">
-          {filteredNotes.pinnedNotes.length > 0 && (
-            <div>
-              <h2 className="text-xs font-medium text-gray-500 mb-2">PINNED</h2>
-              <Droppable droppableId="pinned">
-                {provided => (
-                  <div
-                    ref={provided.innerRef}
-                    {...provided.droppableProps}
-                    className="space-y-1"
-                  >
-                    {filteredNotes.pinnedNotes.map((note, index) => (
-                      <Draggable
-                        key={note.id}
-                        draggableId={note.id}
-                        index={index}
-                      >
-                        {(provided, snapshot) => (
-                          <div
-                            ref={provided.innerRef}
-                            {...provided.draggableProps}
-                          >
-                            <NoteItem
-                              note={note}
-                              onTogglePin={handleTogglePin}
-                              isDragging={snapshot.isDragging}
-                              dragHandleProps={provided.dragHandleProps}
-                            />
-                          </div>
-                        )}
-                      </Draggable>
-                    ))}
-                    {provided.placeholder}
-                  </div>
-                )}
-              </Droppable>
-            </div>
-          )}
-
-          <Droppable droppableId="unpinned">
-            {provided => (
-              <div
-                ref={provided.innerRef}
-                {...provided.droppableProps}
-                className="space-y-1"
-              >
-                {filteredNotes.unpinnedNotes.map((note, index) => (
-                  <Draggable key={note.id} draggableId={note.id} index={index}>
-                    {(provided, snapshot) => (
-                      <div ref={provided.innerRef} {...provided.draggableProps}>
-                        <NoteItem
-                          note={note}
-                          onTogglePin={handleTogglePin}
-                          isDragging={snapshot.isDragging}
-                          dragHandleProps={provided.dragHandleProps}
-                        />
-                      </div>
-                    )}
-                  </Draggable>
-                ))}
-                {provided.placeholder}
-              </div>
-            )}
-          </Droppable>
-        </div>
-      </DragDropContext>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext
+          items={filteredNotes.map(note => note.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          <div className="space-y-2">
+            {filteredNotes.map(note => (
+              <SortableNote
+                key={note.id}
+                note={note}
+                onTogglePin={handleTogglePin}
+              />
+            ))}
+          </div>
+        </SortableContext>
+      </DndContext>
     </div>
   );
 }
