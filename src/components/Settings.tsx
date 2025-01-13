@@ -10,6 +10,8 @@ const Settings: React.FC = () => {
     toggleAutoSave,
     setFontSize,
     setFontFamily,
+    setFocusMode,
+    setTypewriterMode,
   } = useEditor();
 
   return (
@@ -82,35 +84,186 @@ const Settings: React.FC = () => {
         </div>
       </section>
 
-      {/* Features */}
+      {/* Focus Mode */}
       <section className="mb-8">
-        <h3 className="text-lg font-semibold mb-4">Features</h3>
+        <h3 className="text-lg font-semibold mb-4">Focus Mode</h3>
         <div className="space-y-4">
-          {/* Typewriter Sound */}
           <div className="flex items-center justify-between">
             <div>
-              <h4 className="font-medium">Typewriter Sound</h4>
+              <h4 className="font-medium">Enable Focus Mode</h4>
               <p className="text-sm text-ink-faint">
-                Enable mechanical keyboard sounds while typing
+                Minimize distractions while writing
               </p>
             </div>
             <button
-              onClick={toggleSound}
+              onClick={() =>
+                setFocusMode({ enabled: !state.focusMode.enabled })
+              }
               className={cn(
                 'w-12 h-6 rounded-full relative transition-colors duration-normal',
-                state.soundEnabled ? 'bg-accent-primary' : 'bg-surface-alt'
+                state.focusMode.enabled ? 'bg-accent-primary' : 'bg-surface-alt'
               )}
             >
               <span
                 className={cn(
                   'absolute top-1 w-4 h-4 rounded-full bg-ink-inverse transition-transform duration-normal',
-                  state.soundEnabled ? 'left-7' : 'left-1'
+                  state.focusMode.enabled ? 'left-7' : 'left-1'
                 )}
               />
             </button>
           </div>
 
-          {/* Auto Save */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="font-medium">Hide Command Bar</h4>
+              <p className="text-sm text-ink-faint">
+                Hide command bar in focus mode
+              </p>
+            </div>
+            <button
+              onClick={() =>
+                setFocusMode({ hideCommands: !state.focusMode.hideCommands })
+              }
+              className={cn(
+                'w-12 h-6 rounded-full relative transition-colors duration-normal',
+                state.focusMode.hideCommands
+                  ? 'bg-accent-primary'
+                  : 'bg-surface-alt'
+              )}
+            >
+              <span
+                className={cn(
+                  'absolute top-1 w-4 h-4 rounded-full bg-ink-inverse transition-transform duration-normal',
+                  state.focusMode.hideCommands ? 'left-7' : 'left-1'
+                )}
+              />
+            </button>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="font-medium">Dim Surroundings</h4>
+              <p className="text-sm text-ink-faint">
+                Fade out everything except current paragraph
+              </p>
+            </div>
+            <button
+              onClick={() =>
+                setFocusMode({
+                  dimSurroundings: !state.focusMode.dimSurroundings,
+                })
+              }
+              className={cn(
+                'w-12 h-6 rounded-full relative transition-colors duration-normal',
+                state.focusMode.dimSurroundings
+                  ? 'bg-accent-primary'
+                  : 'bg-surface-alt'
+              )}
+            >
+              <span
+                className={cn(
+                  'absolute top-1 w-4 h-4 rounded-full bg-ink-inverse transition-transform duration-normal',
+                  state.focusMode.dimSurroundings ? 'left-7' : 'left-1'
+                )}
+              />
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Typewriter Mode */}
+      <section className="mb-8">
+        <h3 className="text-lg font-semibold mb-4">Typewriter Mode</h3>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="font-medium">Enable Typewriter Mode</h4>
+              <p className="text-sm text-ink-faint">
+                Keep cursor centered while typing
+              </p>
+            </div>
+            <button
+              onClick={() =>
+                setTypewriterMode({ enabled: !state.typewriterMode.enabled })
+              }
+              className={cn(
+                'w-12 h-6 rounded-full relative transition-colors duration-normal',
+                state.typewriterMode.enabled
+                  ? 'bg-accent-primary'
+                  : 'bg-surface-alt'
+              )}
+            >
+              <span
+                className={cn(
+                  'absolute top-1 w-4 h-4 rounded-full bg-ink-inverse transition-transform duration-normal',
+                  state.typewriterMode.enabled ? 'left-7' : 'left-1'
+                )}
+              />
+            </button>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="font-medium">Typewriter Sound</h4>
+              <p className="text-sm text-ink-faint">
+                Play mechanical keyboard sounds
+              </p>
+            </div>
+            <button
+              onClick={() =>
+                setTypewriterMode({ sound: !state.typewriterMode.sound })
+              }
+              className={cn(
+                'w-12 h-6 rounded-full relative transition-colors duration-normal',
+                state.typewriterMode.sound
+                  ? 'bg-accent-primary'
+                  : 'bg-surface-alt'
+              )}
+            >
+              <span
+                className={cn(
+                  'absolute top-1 w-4 h-4 rounded-full bg-ink-inverse transition-transform duration-normal',
+                  state.typewriterMode.sound ? 'left-7' : 'left-1'
+                )}
+              />
+            </button>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="font-medium">Auto-scroll</h4>
+              <p className="text-sm text-ink-faint">
+                Keep cursor in view while typing
+              </p>
+            </div>
+            <button
+              onClick={() =>
+                setTypewriterMode({
+                  scrollIntoView: !state.typewriterMode.scrollIntoView,
+                })
+              }
+              className={cn(
+                'w-12 h-6 rounded-full relative transition-colors duration-normal',
+                state.typewriterMode.scrollIntoView
+                  ? 'bg-accent-primary'
+                  : 'bg-surface-alt'
+              )}
+            >
+              <span
+                className={cn(
+                  'absolute top-1 w-4 h-4 rounded-full bg-ink-inverse transition-transform duration-normal',
+                  state.typewriterMode.scrollIntoView ? 'left-7' : 'left-1'
+                )}
+              />
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Auto Save */}
+      <section className="mb-8">
+        <h3 className="text-lg font-semibold mb-4">Features</h3>
+        <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <h4 className="font-medium">Auto Save</h4>

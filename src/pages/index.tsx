@@ -12,6 +12,7 @@ export default function Home() {
   const { createNote } = useNoteMutations();
   const [content, setContent] = useState('');
   const [showHint, setShowHint] = useState(true);
+  const [isReady, setIsReady] = useState(false);
 
   // Enable typewriter sound on mount
   useEffect(() => {
@@ -19,6 +20,12 @@ export default function Home() {
       enableTypewriterSound();
     }
   }, [editorState.soundEnabled]);
+
+  // Fade in the editor
+  useEffect(() => {
+    const timer = setTimeout(() => setIsReady(true), 100);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Hide hint after user starts typing
   useEffect(() => {
@@ -51,7 +58,13 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-surface-pure dark:bg-surface-dark">
-      <div className="max-w-prose mx-auto px-4 pt-16 relative">
+      <div
+        className={cn(
+          'max-w-prose mx-auto px-4 pt-16 relative',
+          'opacity-0 transition-opacity duration-slow ease-gentle',
+          isReady && 'opacity-100'
+        )}
+      >
         <Textarea
           autoFocus
           value={content}
@@ -66,8 +79,9 @@ export default function Home() {
           className={cn(
             'min-h-[80vh] w-full bg-transparent border-0 focus:ring-0',
             'text-xl leading-relaxed text-ink-rich dark:text-ink-inverse',
-            'placeholder:text-ink-faint/50 placeholder:italic',
+            'placeholder:text-ink-faint/30 placeholder:italic placeholder:font-light',
             'resize-none transition-all duration-normal ease-gentle',
+            'tracking-normal',
             {
               'font-serif': editorState.fontFamily === 'serif',
               'font-sans': editorState.fontFamily === 'sans',
@@ -84,7 +98,7 @@ export default function Home() {
             className={cn(
               'absolute inset-0 pointer-events-none',
               'flex items-center justify-center',
-              'text-ink-faint/30 text-lg italic',
+              'text-ink-faint/20 text-lg italic font-light',
               'transition-opacity duration-slow ease-gentle'
             )}
           >

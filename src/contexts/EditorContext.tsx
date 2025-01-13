@@ -13,6 +13,16 @@ interface EditorState {
   theme: 'light' | 'dark' | 'system';
   soundEnabled: boolean;
   autoSave: boolean;
+  focusMode: {
+    enabled: boolean;
+    hideCommands: boolean;
+    dimSurroundings: boolean;
+  };
+  typewriterMode: {
+    enabled: boolean;
+    sound: boolean;
+    scrollIntoView: boolean;
+  };
 }
 
 type EditorAction =
@@ -21,15 +31,30 @@ type EditorAction =
   | { type: 'SET_FONT_SIZE'; payload: number }
   | { type: 'SET_THEME'; payload: EditorState['theme'] }
   | { type: 'TOGGLE_SOUND' }
-  | { type: 'TOGGLE_AUTO_SAVE' };
+  | { type: 'TOGGLE_AUTO_SAVE' }
+  | { type: 'SET_FOCUS_MODE'; payload: Partial<EditorState['focusMode']> }
+  | {
+      type: 'SET_TYPEWRITER_MODE';
+      payload: Partial<EditorState['typewriterMode']>;
+    };
 
 const initialState: EditorState = {
   mode: 'default',
   fontFamily: 'serif',
   fontSize: 16,
   theme: 'system',
-  soundEnabled: true,
+  soundEnabled: false,
   autoSave: true,
+  focusMode: {
+    enabled: false,
+    hideCommands: true,
+    dimSurroundings: true,
+  },
+  typewriterMode: {
+    enabled: false,
+    sound: false,
+    scrollIntoView: true,
+  },
 };
 
 const editorReducer = (
@@ -49,6 +74,16 @@ const editorReducer = (
       return { ...state, soundEnabled: !state.soundEnabled };
     case 'TOGGLE_AUTO_SAVE':
       return { ...state, autoSave: !state.autoSave };
+    case 'SET_FOCUS_MODE':
+      return {
+        ...state,
+        focusMode: { ...state.focusMode, ...action.payload },
+      };
+    case 'SET_TYPEWRITER_MODE':
+      return {
+        ...state,
+        typewriterMode: { ...state.typewriterMode, ...action.payload },
+      };
     default:
       return state;
   }
@@ -62,6 +97,8 @@ interface EditorContextType {
   setTheme: (theme: EditorState['theme']) => void;
   toggleSound: () => void;
   toggleAutoSave: () => void;
+  setFocusMode: (settings: Partial<EditorState['focusMode']>) => void;
+  setTypewriterMode: (settings: Partial<EditorState['typewriterMode']>) => void;
 }
 
 const EditorContext = createContext<EditorContextType | undefined>(undefined);
@@ -93,6 +130,20 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'TOGGLE_AUTO_SAVE' });
   }, []);
 
+  const setFocusMode = useCallback(
+    (settings: Partial<EditorState['focusMode']>) => {
+      dispatch({ type: 'SET_FOCUS_MODE', payload: settings });
+    },
+    []
+  );
+
+  const setTypewriterMode = useCallback(
+    (settings: Partial<EditorState['typewriterMode']>) => {
+      dispatch({ type: 'SET_TYPEWRITER_MODE', payload: settings });
+    },
+    []
+  );
+
   const value = {
     state,
     setMode,
@@ -101,6 +152,8 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
     setTheme,
     toggleSound,
     toggleAutoSave,
+    setFocusMode,
+    setTypewriterMode,
   };
 
   return (
