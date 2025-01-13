@@ -1,222 +1,539 @@
 import { create } from 'zustand';
-import { devtools, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import { enableMapSet } from 'immer';
+import type { EditorStore } from './types';
+import { FormatPlugin } from '@/components/editor/plugins/FormatPlugin';
+import { SearchReplacePlugin } from '@/components/editor/plugins/SearchReplacePlugin';
+import { AutosavePlugin } from '@/components/editor/plugins/AutosavePlugin';
+import { MarkdownPlugin } from '@/components/editor/plugins/MarkdownPlugin';
 import type {
-  EditorState,
-  Plugin,
-  Decoration,
   Command,
-} from '../components/editor/types';
-import { createContentSlice, ContentSlice } from './slices/contentSlice';
-import { createFormatSlice, FormatSlice } from './slices/formatSlice';
-import { createUISlice, UISlice } from './slices/uiSlice';
-import { createPluginSlice, PluginSlice } from './slices/pluginSlice';
-import { createHistorySlice, HistorySlice } from './slices/historySlice';
+  Plugin,
+  Selection,
+  UndoStackItem,
+} from '@/components/editor/types';
 
-// Enable MapSet support for Immer
 enableMapSet();
 
-export interface EditorActions {
-  // Core editor actions
-  initialize: () => void;
-  destroy: () => void;
-  reset: () => void;
-
-  // History actions
-  undo: () => void;
-  redo: () => void;
-
-  // Event handlers
-  handleKeyDown: (event: KeyboardEvent) => void;
-  handlePaste: (event: ClipboardEvent) => void;
-  handleDrop: (event: DragEvent) => void;
-}
-
-export interface BaseEditorState
-  extends Omit<EditorState, 'plugins' | 'decorations' | 'commands'> {
-  plugins: Map<string, Plugin>;
-  decorations: Map<string, Decoration>;
-  commands: Map<string, Command>;
-}
-
-export type EditorStore = BaseEditorState &
-  ContentSlice &
-  FormatSlice &
-  UISlice &
-  PluginSlice &
-  HistorySlice &
-  EditorActions;
-
-const initialState: Omit<
-  BaseEditorState,
-  keyof (
-    | ContentSlice
-    | FormatSlice
-    | UISlice
-    | PluginSlice
-    | HistorySlice
-    | EditorActions
-  )
-> = {
-  content: '',
-  selection: null,
-  undoStack: [],
-  redoStack: [],
-  lastUndoTime: 0,
-  stats: {
-    wordCount: 0,
-    charCount: 0,
-    timeSpent: 0,
-    linesCount: 0,
-    readingTime: 0,
-  },
-  saveStatus: 'saved',
-  isLocalFocusMode: false,
-  isParagraphFocus: false,
-  isAmbientSound: false,
-  showToolbar: false,
-  toolbarPosition: { x: 0, y: 0 },
-  focusMode: {
-    enabled: false,
-    hideCommands: false,
-    dimSurroundings: false,
-  },
-  typewriterMode: {
-    enabled: false,
-    sound: false,
-    scrollIntoView: false,
-  },
-  plugins: new Map(),
-  decorations: new Map(),
-  commands: new Map(),
-};
-
-const defaultPlugins: Plugin[] = [
-  // Add your default plugins here
-];
-
 const useEditorStore = create<EditorStore>()(
-  devtools(
-    persist(
-      immer((set, get, api) => ({
-        ...initialState,
-        ...createContentSlice(set, get, api),
-        ...createFormatSlice(set, get, api),
-        ...createUISlice(set, get, api),
-        ...createPluginSlice(set, get, api),
-        ...createHistorySlice(set, get, api),
+  immer((set, get) => ({
+    // Initial state
+    content: '',
+    selection: null,
+    plugins: new Map(),
+    commands: new Map(),
+    decorations: new Map(),
+    cleanupFunctions: new Map(),
+    undoStack: [],
+    redoStack: [],
+    lastUndoTime: 0,
+    stats: {
+      wordCount: 0,
+      charCount: 0,
+      timeSpent: 0,
+      linesCount: 0,
+      readingTime: 0,
+    },
+    saveStatus: 'saved',
+    isLocalFocusMode: false,
+    isParagraphFocus: false,
+    isAmbientSound: false,
+    showToolbar: false,
+    toolbarPosition: { x: 0, y: 0 },
+    focusMode: {
+      enabled: false,
+      hideCommands: false,
+      dimSurroundings: false,
+    },
+    typewriterMode: {
+      enabled: false,
+      sound: false,
+      scrollIntoView: true,
+    },
+    activeFormats: new Set(),
 
-        // Core editor actions
-        initialize: () => {
-          // Initialize default plugins
-          defaultPlugins.forEach(plugin => get().registerPlugin(plugin));
-        },
+    // Actions
+    setContent: content =>
+      set(state => {
+        state.content = content;
+      }),
+    setSelection: selection =>
+      set(state => {
+        state.selection = selection;
+      }),
+    insertText: (text, at) => {
+      const state = get();
+      const insertPosition =
+        at ?? state.selection?.start ?? state.content.length;
+      set(state => {
+        state.content =
+          state.content.slice(0, insertPosition) +
+          text +
+          state.content.slice(insertPosition);
+      });
+    },
+    deleteText: (start, end) =>
+      set(state => {
+        state.content =
+          state.content.slice(0, start) + state.content.slice(end);
+      }),
+    getSelectedText: () => {
+      const state = get();
+      return state.selection
+        ? state.content.slice(state.selection.start, state.selection.end)
+        : null;
+    },
 
-        destroy: () => {
-          // Clean up plugins first without triggering state updates
-          const currentPlugins = Array.from(get().plugins.values());
-          currentPlugins.forEach(plugin => plugin.destroy?.());
+    // Format actions
+    format: (type, selection) => {
+      const state = get();
 
-          // Reset state using Immer mutation pattern
-          set(state => {
-            state.content = initialState.content;
-            state.selection = initialState.selection;
-            state.undoStack = initialState.undoStack;
-            state.redoStack = initialState.redoStack;
-            state.lastUndoTime = initialState.lastUndoTime;
-            state.stats = { ...initialState.stats };
-            state.saveStatus = initialState.saveStatus;
-            state.isLocalFocusMode = initialState.isLocalFocusMode;
-            state.isParagraphFocus = initialState.isParagraphFocus;
-            state.isAmbientSound = initialState.isAmbientSound;
-            state.showToolbar = initialState.showToolbar;
-            state.toolbarPosition = { ...initialState.toolbarPosition };
-            state.focusMode = { ...initialState.focusMode };
-            state.typewriterMode = { ...initialState.typewriterMode };
-            state.plugins = new Map();
-            state.decorations = new Map();
-            state.commands = new Map();
-          });
-        },
-
-        reset: () => {
-          get().destroy();
-          get().initialize();
-        },
-
-        // Event handlers
-        handleKeyDown: (event: KeyboardEvent) => {
-          const { key, ctrlKey, metaKey } = event;
-
-          // Handle keyboard shortcuts
-          if (ctrlKey || metaKey) {
-            switch (key.toLowerCase()) {
-              case 'z':
-                if (event.shiftKey) {
-                  get().redo();
-                } else {
-                  get().undo();
-                }
-                event.preventDefault();
-                break;
-
-              case 'b':
-                get().toggleBold();
-                event.preventDefault();
-                break;
-
-              case 'i':
-                get().toggleItalic();
-                event.preventDefault();
-                break;
-
-              case '`':
-                get().toggleCode();
-                event.preventDefault();
-                break;
-            }
-          }
-        },
-
-        handlePaste: (event: ClipboardEvent) => {
-          event.preventDefault();
-
-          const text = event.clipboardData?.getData('text/plain');
-          if (!text) return;
-
-          const { selection } = get();
-          if (selection) {
-            // Replace selected text
-            get().deleteText(selection.start, selection.end);
-          }
-
-          get().insertText(text);
-        },
-
-        handleDrop: (event: DragEvent) => {
-          event.preventDefault();
-
-          const text = event.dataTransfer?.getData('text/plain');
-          if (!text) return;
-
-          const { selection } = get();
-          if (selection) {
-            // Replace selected text
-            get().deleteText(selection.start, selection.end);
-          }
-
-          get().insertText(text);
-        },
-      })),
-      {
-        name: 'editor-storage',
-        partialize: state => ({
-          content: state.content,
-        }),
+      // Run before format hooks
+      if (state.runBeforeFormat(type, selection) === false) {
+        return;
       }
-    )
-  )
+
+      // Get format commands from plugins
+      const formatCommand = Array.from(state.commands.values()).find(
+        cmd => cmd.id === `format-${type}`
+      );
+
+      if (formatCommand) {
+        formatCommand.execute();
+      }
+
+      // Run after format hooks
+      state.runAfterFormat(type, selection);
+    },
+    toggleBold: () => {
+      const state = get();
+      if (state.selection) state.format('bold', state.selection);
+    },
+    toggleItalic: () => {
+      const state = get();
+      if (state.selection) state.format('italic', state.selection);
+    },
+    toggleCode: () => {
+      const state = get();
+      if (state.selection) state.format('code', state.selection);
+    },
+    createLink: url => {
+      const state = get();
+      if (state.selection) state.format('link', state.selection);
+    },
+    createHeading: level => {
+      const state = get();
+      if (state.selection) state.format('heading', state.selection);
+    },
+    createList: ordered => {
+      const state = get();
+      if (state.selection) state.format('list', state.selection);
+    },
+    createQuote: () => {
+      const state = get();
+      if (state.selection) state.format('quote', state.selection);
+    },
+
+    // UI actions
+    toggleFocusMode: () =>
+      set(state => {
+        state.focusMode.enabled = !state.focusMode.enabled;
+      }),
+    toggleParagraphFocus: () =>
+      set(state => {
+        state.isParagraphFocus = !state.isParagraphFocus;
+      }),
+    toggleAmbientSound: () =>
+      set(state => {
+        state.isAmbientSound = !state.isAmbientSound;
+      }),
+    toggleTypewriterMode: () =>
+      set(state => {
+        state.typewriterMode.enabled = !state.typewriterMode.enabled;
+      }),
+    setToolbarPosition: position =>
+      set(state => {
+        state.toolbarPosition = position;
+      }),
+    setShowToolbar: show =>
+      set(state => {
+        state.showToolbar = show;
+      }),
+    setTypewriterMode: settings =>
+      set(state => {
+        state.typewriterMode = { ...state.typewriterMode, ...settings };
+      }),
+
+    // Plugin actions
+    registerPlugin: plugin =>
+      set(state => {
+        // Create new Maps to avoid mutating frozen objects
+        const newPlugins = new Map(state.plugins);
+        const newCommands = new Map(state.commands);
+        const newCleanupFunctions = new Map(state.cleanupFunctions);
+
+        newPlugins.set(plugin.id, plugin);
+
+        if (plugin.getCommands) {
+          const commands = plugin.getCommands(state as any);
+          commands.forEach(command => {
+            newCommands.set(command.id, command);
+          });
+        }
+
+        const cleanup = plugin.setup?.(state as any);
+        if (cleanup) {
+          newCleanupFunctions.set(plugin.id, cleanup);
+        }
+
+        // Update state with new Maps
+        state.plugins = newPlugins;
+        state.commands = newCommands;
+        state.cleanupFunctions = newCleanupFunctions;
+      }),
+
+    unregisterPlugin: pluginId =>
+      set(state => {
+        const newPlugins = new Map(state.plugins);
+        const newCleanupFunctions = new Map(state.cleanupFunctions);
+
+        const cleanup = newCleanupFunctions.get(pluginId);
+        if (cleanup) cleanup();
+
+        newCleanupFunctions.delete(pluginId);
+        newPlugins.delete(pluginId);
+
+        state.plugins = newPlugins;
+        state.cleanupFunctions = newCleanupFunctions;
+      }),
+
+    getPlugin: pluginId => {
+      return get().plugins.get(pluginId);
+    },
+
+    registerCommand: command =>
+      set(state => {
+        const newCommands = new Map(state.commands);
+        newCommands.set(command.id, command);
+        state.commands = newCommands;
+      }),
+
+    unregisterCommand: commandId =>
+      set(state => {
+        const newCommands = new Map(state.commands);
+        newCommands.delete(commandId);
+        state.commands = newCommands;
+      }),
+
+    executeCommand: (commandId, ...args) => {
+      const command = get().commands.get(commandId);
+      if (command) command.execute(...args);
+    },
+
+    addDecoration: decoration =>
+      set(state => {
+        const newDecorations = new Map(state.decorations);
+        newDecorations.set(decoration.id, decoration);
+        state.decorations = newDecorations;
+      }),
+
+    removeDecoration: decorationId =>
+      set(state => {
+        const newDecorations = new Map(state.decorations);
+        newDecorations.delete(decorationId);
+        state.decorations = newDecorations;
+      }),
+
+    getDecorations: () => {
+      return Array.from(get().decorations.values());
+    },
+
+    updatePluginState: (pluginId, state) => {
+      const plugin = get().plugins.get(pluginId);
+      if (plugin) {
+        plugin.state = state;
+      }
+    },
+
+    getPluginState: pluginId => {
+      const plugin = get().plugins.get(pluginId);
+      return plugin?.state;
+    },
+
+    // Hook runners
+    runBeforeContentChange: content => {
+      const state = get();
+      let newContent = content;
+      state.plugins.forEach(plugin => {
+        if (plugin.hooks?.beforeContentChange) {
+          const result = plugin.hooks.beforeContentChange(newContent);
+          if (result) newContent = result;
+        }
+      });
+      return newContent;
+    },
+
+    runAfterContentChange: content => {
+      get().plugins.forEach(plugin => {
+        plugin.hooks?.afterContentChange?.(content);
+      });
+    },
+
+    runBeforeFormat: (type, selection) => {
+      const state = get();
+      let shouldContinue = true;
+      state.plugins.forEach(plugin => {
+        if (plugin.hooks?.beforeFormat) {
+          const result = plugin.hooks.beforeFormat(type, selection);
+          if (result === false) shouldContinue = false;
+        }
+      });
+      return shouldContinue;
+    },
+
+    runAfterFormat: (type, selection) => {
+      get().plugins.forEach(plugin => {
+        plugin.hooks?.afterFormat?.(type, selection);
+      });
+    },
+
+    // History actions
+    addToUndoStack: item => {
+      set(state => {
+        state.undoStack.push(item);
+        state.lastUndoTime = Date.now();
+      });
+    },
+
+    clearHistory: () => {
+      set(state => {
+        state.undoStack = [];
+        state.redoStack = [];
+        state.lastUndoTime = 0;
+      });
+    },
+
+    canUndo: () => get().undoStack.length > 0,
+    canRedo: () => get().redoStack.length > 0,
+
+    getLastUndoItem: () => get().undoStack[get().undoStack.length - 1],
+    getLastRedoItem: () => get().redoStack[get().redoStack.length - 1],
+
+    // Core actions
+    initialize: () =>
+      set(state => {
+        // Initialize with empty maps
+        state.plugins = new Map();
+        state.commands = new Map();
+        state.cleanupFunctions = new Map();
+        state.decorations = new Map();
+
+        // Register plugins
+        [
+          FormatPlugin,
+          SearchReplacePlugin,
+          AutosavePlugin,
+          MarkdownPlugin,
+        ].forEach(plugin => {
+          const newPlugins = new Map(state.plugins);
+          const newCommands = new Map(state.commands);
+          const newCleanupFunctions = new Map(state.cleanupFunctions);
+
+          newPlugins.set(plugin.id, plugin);
+
+          if (plugin.getCommands) {
+            const commands = plugin.getCommands(state as any);
+            commands.forEach(command => {
+              newCommands.set(command.id, command);
+            });
+          }
+
+          const cleanup = plugin.setup?.(state as any);
+          if (cleanup) {
+            newCleanupFunctions.set(plugin.id, cleanup);
+          }
+
+          state.plugins = newPlugins;
+          state.commands = newCommands;
+          state.cleanupFunctions = newCleanupFunctions;
+        });
+      }),
+
+    destroy: () =>
+      set(state => {
+        // Call cleanup functions
+        Array.from(state.cleanupFunctions.values()).forEach(cleanup =>
+          cleanup()
+        );
+
+        // Reset all maps
+        state.cleanupFunctions = new Map();
+        state.plugins = new Map();
+        state.commands = new Map();
+        state.decorations = new Map();
+
+        // Reset other state
+        state.content = '';
+        state.selection = null;
+      }),
+
+    reset: () =>
+      set(state => {
+        // First destroy
+        Array.from(state.cleanupFunctions.values()).forEach(cleanup =>
+          cleanup()
+        );
+
+        // Reset all maps
+        state.plugins = new Map();
+        state.commands = new Map();
+        state.cleanupFunctions = new Map();
+        state.decorations = new Map();
+
+        // Reset other state
+        state.content = '';
+        state.selection = null;
+
+        // Then initialize
+        [
+          FormatPlugin,
+          SearchReplacePlugin,
+          AutosavePlugin,
+          MarkdownPlugin,
+        ].forEach(plugin => {
+          const newPlugins = new Map(state.plugins);
+          const newCommands = new Map(state.commands);
+          const newCleanupFunctions = new Map(state.cleanupFunctions);
+
+          newPlugins.set(plugin.id, plugin);
+
+          if (plugin.getCommands) {
+            const commands = plugin.getCommands(state as any);
+            commands.forEach(command => {
+              newCommands.set(command.id, command);
+            });
+          }
+
+          const cleanup = plugin.setup?.(state as any);
+          if (cleanup) {
+            newCleanupFunctions.set(plugin.id, cleanup);
+          }
+
+          state.plugins = newPlugins;
+          state.commands = newCommands;
+          state.cleanupFunctions = newCleanupFunctions;
+        });
+      }),
+
+    // Event handlers
+    handleKeyDown: event => {
+      const state = get();
+      const { key, ctrlKey, metaKey } = event;
+
+      if (ctrlKey || metaKey) {
+        switch (key.toLowerCase()) {
+          case 'z':
+            if (event.shiftKey) {
+              state.redo();
+            } else {
+              state.undo();
+            }
+            event.preventDefault();
+            break;
+
+          case 'b':
+            state.toggleBold();
+            event.preventDefault();
+            break;
+
+          case 'i':
+            state.toggleItalic();
+            event.preventDefault();
+            break;
+
+          case '`':
+            state.toggleCode();
+            event.preventDefault();
+            break;
+        }
+      }
+    },
+
+    handlePaste: event => {
+      event.preventDefault();
+      const text = event.clipboardData?.getData('text/plain');
+      if (!text) return;
+
+      const state = get();
+      if (state.selection) {
+        state.deleteText(state.selection.start, state.selection.end);
+      }
+      state.insertText(text);
+    },
+
+    handleDrop: event => {
+      event.preventDefault();
+      const text = event.dataTransfer?.getData('text/plain');
+      if (!text) return;
+
+      const state = get();
+      if (state.selection) {
+        state.deleteText(state.selection.start, state.selection.end);
+      }
+      state.insertText(text);
+    },
+
+    // History actions
+    undo: () => {
+      const state = get();
+      const lastItem = state.getLastUndoItem();
+      if (!lastItem) return;
+
+      // Save current state to redo stack
+      const currentState: UndoStackItem = {
+        content: state.content,
+        selection: state.selection ?? {
+          start: 0,
+          end: 0,
+          text: '',
+        },
+        timestamp: Date.now(),
+      };
+
+      set(state => {
+        state.redoStack.push(currentState);
+        state.undoStack.pop();
+        state.content = lastItem.content;
+        state.selection = lastItem.selection;
+        state.lastUndoTime = Date.now();
+      });
+    },
+
+    redo: () => {
+      const state = get();
+      const lastItem = state.getLastRedoItem();
+      if (!lastItem) return;
+
+      // Save current state to undo stack
+      const currentState: UndoStackItem = {
+        content: state.content,
+        selection: state.selection ?? {
+          start: 0,
+          end: 0,
+          text: '',
+        },
+        timestamp: Date.now(),
+      };
+
+      set(state => {
+        state.undoStack.push(currentState);
+        state.redoStack.pop();
+        state.content = lastItem.content;
+        state.selection = lastItem.selection;
+        state.lastUndoTime = Date.now();
+      });
+    },
+  }))
 );
 
 export default useEditorStore;

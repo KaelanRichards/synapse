@@ -20,11 +20,13 @@ export const VirtualTextarea: React.FC<VirtualTextareaProps> = ({
   isParagraphFocus,
 }) => {
   const handleSelect = (e: React.SyntheticEvent<HTMLTextAreaElement>) => {
+    console.log('Selection event fired');
     const textarea = e.target as HTMLTextAreaElement;
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
     const text = textarea.value.slice(start, end);
 
+    console.log('Selection details:', { start, end, text });
     onSelect({ start, end, text });
   };
 
@@ -34,6 +36,8 @@ export const VirtualTextarea: React.FC<VirtualTextareaProps> = ({
       value={content}
       onChange={onChange}
       onSelect={handleSelect}
+      onMouseUp={handleSelect}
+      onKeyUp={handleSelect}
       className="w-full h-full min-h-screen p-4 bg-transparent resize-none focus:outline-none"
       style={{
         opacity: isLocalFocusMode ? 0.7 : 1,

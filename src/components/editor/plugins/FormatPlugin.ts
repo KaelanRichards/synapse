@@ -71,24 +71,10 @@ export const FormatPlugin = createPlugin<FormatState>({
     lastFormat: null,
   },
 
-  setup: (editor: Editor) => {
-    let pluginState = {
-      lastFormat: null as FormatType | null,
-    };
-
-    const updateState = (newState: Partial<FormatState>) => {
-      pluginState = { ...pluginState, ...newState };
-      return pluginState;
-    };
-
+  getCommands: (editor: Editor) => {
     const format = (type: FormatType) => {
       const { selection } = editor.state;
       if (!selection) return;
-
-      // Call beforeFormat hook
-      if (editor.hooks?.beforeFormat?.(type, selection) === false) {
-        return;
-      }
 
       const prefix = getFormatPrefix(type);
       const suffix = getFormatSuffix(type);
@@ -106,29 +92,22 @@ export const FormatPlugin = createPlugin<FormatState>({
         end: selection.end + prefix.length,
         text: selectedText,
       };
-
-      updateState({ lastFormat: type });
-
-      // Call afterFormat hook
-      editor.hooks?.afterFormat?.(type, selection);
     };
 
-    // Register format commands
-    formatTypes.forEach(type => {
-      editor.registerCommand({
-        id: `format-${type}`,
-        name: type.charAt(0).toUpperCase() + type.slice(1),
-        shortcut: shortcuts[type],
-        category: 'Format',
-        execute: () => format(type),
-      });
-    });
+    // Return format commands
+    return formatTypes.map(type => ({
+      id: `format-${type}`,
+      name: type.charAt(0).toUpperCase() + type.slice(1),
+      shortcut: shortcuts[type],
+      category: 'Format',
+      execute: () => format(type),
+    }));
+  },
 
-    // Return cleanup function
+  setup: (editor: Editor) => {
+    console.log('FormatPlugin setup');
     return () => {
-      pluginState = {
-        lastFormat: null,
-      };
+      console.log('FormatPlugin cleanup');
     };
   },
 });

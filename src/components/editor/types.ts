@@ -28,6 +28,8 @@ export interface Plugin {
   init?: (editor: Editor) => void | (() => void);
   destroy?: () => void;
   commands?: Command[];
+  getCommands?: (editor: Editor) => Command[];
+  setup?: (editor: Editor) => void | (() => void);
   decorations?: Decoration[];
   hooks?: {
     beforeContentChange?: (content: string) => string;
@@ -63,6 +65,7 @@ export interface Editor {
   plugins: Map<string, Plugin>;
   commands: Map<string, Command>;
   decorations: Map<string, Decoration>;
+  cleanupFunctions: Map<string, () => void>;
   state: EditorState;
   dispatch: (action: any) => void;
   subscribe: (listener: (state: EditorState) => void) => () => void;

@@ -1,4 +1,10 @@
-import React, { useEffect, useCallback, useState, useRef } from 'react';
+import React, {
+  useEffect,
+  useCallback,
+  useState,
+  useRef,
+  ChangeEvent,
+} from 'react';
 import { cn } from '@/lib/utils';
 import { useNoteMutations } from '@/hooks/useNoteMutations';
 import { useSupabase } from '@/contexts/SupabaseContext';
@@ -7,6 +13,15 @@ import { EditorToolbar } from './EditorToolbar';
 import { SearchReplaceToolbar } from './SearchReplaceToolbar';
 import { VirtualTextarea } from './VirtualTextarea';
 import AmbientSoundPlayer from '../AmbientSoundPlayer';
+import {
+  Bold as BoldIcon,
+  Italic as ItalicIcon,
+  Code as CodeIcon,
+  Quote as QuoteIcon,
+  List as ListIcon,
+  Heading1 as Heading1Icon,
+  Link as LinkIcon,
+} from 'lucide-react';
 import type {
   FormatType,
   Selection,
@@ -164,28 +179,86 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
   // Handle selection changes for toolbar positioning
   const handleSelectionChange = useCallback(
     (selection: Selection | null) => {
+      console.log('Selection changed:', selection);
       setSelection(selection);
 
-      if (selection && textareaRef.current) {
-        const range = document.createRange();
-        const textNode = textareaRef.current.firstChild;
-        if (!textNode) return;
+      if (selection && selection.text && textareaRef.current) {
+        console.log('Selection is valid, calculating position');
+        const textarea = textareaRef.current;
+        const { selectionStart, selectionEnd } = textarea;
 
-        range.setStart(textNode, selection.start);
-        range.setEnd(textNode, selection.end);
+        // Create a temporary div to measure text dimensions
+        const div = document.createElement('div');
+        div.style.position = 'absolute';
+        div.style.visibility = 'hidden';
+        div.style.whiteSpace = 'pre-wrap';
+        div.style.wordWrap = 'break-word';
+        div.style.width = `${textarea.clientWidth}px`;
+        div.style.font = window.getComputedStyle(textarea).font;
+        div.style.padding = window.getComputedStyle(textarea).padding;
+        div.style.lineHeight = window.getComputedStyle(textarea).lineHeight;
 
-        const rect = range.getBoundingClientRect();
+        // Get text before cursor
+        const textBeforeCursor = textarea.value.substring(0, selectionStart);
+        const textSelection = textarea.value.substring(
+          selectionStart,
+          selectionEnd
+        );
+
+        // Create marker for position
+        const markerSpan = document.createElement('span');
+        div.textContent = textBeforeCursor;
+        div.appendChild(markerSpan);
+        markerSpan.textContent = textSelection;
+
+        // Add to DOM temporarily to measure
+        document.body.appendChild(div);
+
+        // Get position relative to textarea
+        const markerRect = markerSpan.getBoundingClientRect();
+        const textareaRect = textarea.getBoundingClientRect();
+
+        // Calculate position accounting for scroll
+        const scrollTop =
+          window.pageYOffset || document.documentElement.scrollTop;
+        const scrollLeft =
+          window.pageXOffset || document.documentElement.scrollLeft;
+
+        const x =
+          textareaRect.left +
+          scrollLeft +
+          (markerRect.left - textareaRect.left + markerRect.width / 2);
+        const y =
+          textareaRect.top + scrollTop + (markerRect.top - textareaRect.top);
+
+        console.log('Calculated position:', { x, y });
+
+        // Cleanup
+        document.body.removeChild(div);
+
         setToolbarPosition({
-          x: rect.left + rect.width / 2,
-          y: rect.top - 10,
+          x,
+          y,
         });
         setShowToolbar(true);
+        console.log('Toolbar should be visible at:', { x, y });
       } else {
+        console.log('Selection is not valid, hiding toolbar');
         setShowToolbar(false);
       }
     },
     [setSelection, setToolbarPosition, setShowToolbar]
   );
+
+  // Log commands for debugging
+  useEffect(() => {
+    console.log(
+      'Available format commands:',
+      Array.from(commands.values())
+        .filter(cmd => cmd.category === 'Format')
+        .map(cmd => cmd.name)
+    );
+  }, [commands]);
 
   // Autosave functionality
   useEffect(() => {
@@ -209,26 +282,14 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
 
   // Handle content change
   const handleContentChange = useCallback(
-    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    (e: ChangeEvent<HTMLTextAreaElement>) => {
       setContent(e.target.value);
-
-      // Handle typewriter mode scrolling
-      if (typewriterMode.enabled && typewriterMode.scrollIntoView) {
-        const textarea = e.target;
-        const lineHeight = parseInt(getComputedStyle(textarea).lineHeight);
-        const currentLine = textarea.value
-          .substr(0, textarea.selectionStart)
-          .split('\n').length;
-        const scrollPosition = lineHeight * currentLine;
-        textarea.scrollTop = scrollPosition - textarea.clientHeight / 2;
-      }
     },
-    [setContent, typewriterMode]
+    [setContent]
   );
 
   return (
-    <div className="relative flex h-full flex-col">
-      {/* Editor Toolbar */}
+    <div className="relative flex flex-col h-full">
       <EditorToolbar
         stats={stats}
         saveStatus={saveStatus}
@@ -242,8 +303,82 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
         onToggleTypewriterMode={toggleTypewriterMode}
       />
 
-      {/* Search/Replace Toolbar */}
-      {searchReplaceState && (
+      <div className="relative flex-1 overflow-auto">
+        {/* Floating Format Toolbar */}
+        {showToolbar && (
+          <div
+            className="fixed z-50 transform -translate-x-1/2 floating-toolbar"
+            style={{
+              left: toolbarPosition.x,
+              top: Math.max(toolbarPosition.y - 40, 10),
+              pointerEvents: 'auto',
+            }}
+          >
+            <div className="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-2 flex space-x-2 border border-gray-200 dark:border-gray-700 min-w-[200px]">
+              <button
+                onClick={() => commands.get('format-bold')?.execute()}
+                className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200"
+                title="Bold (⌘B)"
+              >
+                <BoldIcon className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => commands.get('format-italic')?.execute()}
+                className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200"
+                title="Italic (⌘I)"
+              >
+                <ItalicIcon className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => commands.get('format-code')?.execute()}
+                className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200"
+                title="Code (⌘E)"
+              >
+                <CodeIcon className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => commands.get('format-heading')?.execute()}
+                className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200"
+                title="Heading (⌘H)"
+              >
+                <Heading1Icon className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => commands.get('format-link')?.execute()}
+                className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200"
+                title="Link (⌘K)"
+              >
+                <LinkIcon className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => commands.get('format-quote')?.execute()}
+                className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200"
+                title="Quote (⇧⌘.)"
+              >
+                <QuoteIcon className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => commands.get('format-list')?.execute()}
+                className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200"
+                title="List (⌘L)"
+              >
+                <ListIcon className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        <VirtualTextarea
+          content={content}
+          onChange={handleContentChange}
+          onSelect={handleSelectionChange}
+          textareaRef={textareaRef}
+          isLocalFocusMode={isLocalFocusMode}
+          isParagraphFocus={isParagraphFocus}
+        />
+      </div>
+
+      {searchReplaceState?.isOpen && (
         <SearchReplaceToolbar
           isOpen={searchReplaceState.isOpen}
           searchTerm={searchReplaceState.searchTerm}
@@ -287,58 +422,17 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
           }}
         />
       )}
-
-      {/* Floating Format Toolbar */}
-      {showToolbar && (
-        <div
-          className="absolute z-50 transform -translate-x-1/2 floating-toolbar"
-          style={{
-            left: toolbarPosition.x,
-            top: Math.max(toolbarPosition.y - 40, 10),
-          }}
-        >
-          <div className="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-2 flex space-x-2 border border-gray-200 dark:border-gray-700">
-            {Array.from(commands.values())
-              .filter(cmd => cmd.category === 'Format')
-              .map(cmd => (
-                <button
-                  key={cmd.id}
-                  onClick={() => cmd.execute()}
-                  className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-sm font-medium text-gray-700 dark:text-gray-200"
-                >
-                  {cmd.name}
-                </button>
-              ))}
-          </div>
-        </div>
-      )}
-
-      {/* Main Editor Area */}
-      <div className="relative flex-1 overflow-auto">
-        <VirtualTextarea
-          content={content}
-          onChange={handleContentChange}
-          onSelect={handleSelectionChange}
-          textareaRef={textareaRef}
-          isLocalFocusMode={isLocalFocusMode}
-          isParagraphFocus={isParagraphFocus}
-        />
-      </div>
-
-      {/* Ambient Sound Player */}
-      {isAmbientSound && (
-        <AmbientSoundPlayer
-          isPlaying={isAmbientSound}
-          onClose={toggleAmbientSound}
-        />
-      )}
-
-      {/* Keyboard Shortcuts Panel */}
       {showKeyboardShortcuts && (
         <KeyboardShortcutsPanel
           isOpen={showKeyboardShortcuts}
           commands={Array.from(commands.values())}
           onClose={() => setShowKeyboardShortcuts(false)}
+        />
+      )}
+      {isAmbientSound && (
+        <AmbientSoundPlayer
+          isPlaying={isAmbientSound}
+          onClose={toggleAmbientSound}
         />
       )}
     </div>

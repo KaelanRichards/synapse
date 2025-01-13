@@ -85,6 +85,7 @@ export type PluginState = WritableDraft<{
   plugins: Map<string, Plugin>;
   commands: Map<string, Command>;
   decorations: Map<string, Decoration>;
+  cleanupFunctions: Map<string, () => void>;
 }>;
 
 export interface PluginActions {
