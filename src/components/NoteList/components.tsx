@@ -192,7 +192,10 @@ export const SortableNoteItem = React.memo(
       transform,
       transition,
       isDragging,
-    } = useSortable({ id: note.id });
+    } = useSortable({
+      id: note.id,
+      disabled: false,
+    });
 
     const style = {
       transform: CSS.Transform.toString(transform),
@@ -204,29 +207,32 @@ export const SortableNoteItem = React.memo(
         ref={setNodeRef}
         style={style}
         className={cn(
-          'transition-shadow duration-200 relative',
+          'transition-shadow duration-200 relative group',
           isDragging && 'shadow-lg'
         )}
       >
-        <div
-          {...attributes}
-          {...listeners}
-          className="absolute left-0 inset-y-0 w-8 cursor-grab active:cursor-grabbing flex items-center justify-center opacity-0 group-hover:opacity-100"
-        >
-          <svg
-            className="w-4 h-4 text-gray-400"
-            viewBox="0 0 16 16"
-            fill="currentColor"
+        <div className="flex">
+          <div
+            {...attributes}
+            {...listeners}
+            className="w-8 flex-shrink-0 cursor-grab active:cursor-grabbing flex items-center justify-center hover:bg-accent-50/50 dark:hover:bg-accent-900/10"
+            onClick={e => e.stopPropagation()}
           >
-            <path d="M4 4a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm0 5.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm0 5.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm8-11a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm0 5.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm0 5.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z" />
-          </svg>
-        </div>
-        <div className="pl-8">
-          <NoteItem
-            note={note}
-            onTogglePin={onTogglePin}
-            isDragging={isDragging}
-          />
+            <svg
+              className="w-4 h-4 text-gray-400"
+              viewBox="0 0 16 16"
+              fill="currentColor"
+            >
+              <path d="M4 4a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm0 5.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm0 5.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm8-11a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm0 5.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm0 5.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z" />
+            </svg>
+          </div>
+          <div className="flex-1">
+            <NoteItem
+              note={note}
+              onTogglePin={onTogglePin}
+              isDragging={isDragging}
+            />
+          </div>
         </div>
       </div>
     );
