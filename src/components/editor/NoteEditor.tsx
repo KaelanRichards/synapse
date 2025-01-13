@@ -1,14 +1,13 @@
 import React, { useEffect, useCallback, useState, useRef } from 'react';
 import { useNoteMutations } from '@/hooks/useNoteMutations';
 import { EditorToolbar } from './EditorToolbar';
-import { EditorContainer } from './EditorContainer';
-import AmbientSoundPlayer from '../AmbientSoundPlayer';
-import type { Selection, NoteEditorProps } from './types';
-import { KeyboardShortcutsPanel } from './KeyboardShortcutsPanel';
+import type { Selection, NoteEditorProps, EditorStats } from './types';
 import { AutosavePlugin } from './plugins/AutosavePlugin';
 import { FormatPlugin } from '@/components/editor/plugins/FormatPlugin';
 import useEditorStore from '@/store/editorStore';
-import { EditorErrorBoundary, ToolbarErrorBoundary } from './ErrorBoundary';
+import { EditorErrorBoundary } from './ErrorBoundary';
+import { VirtualTextarea } from './VirtualTextarea';
+import { FloatingFormatToolbar } from './FloatingFormatToolbar';
 
 const SAVE_DELAY = 1000;
 
@@ -18,25 +17,50 @@ const defaultPlugins = [new AutosavePlugin(), new FormatPlugin()];
 export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { updateNote } = useNoteMutations();
-  const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
+  const [content, setContent] = useState(initialNote?.content || '');
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving'>('saved');
+  const [isAmbientSound, setIsAmbientSound] = useState(false);
+  const [toolbarPosition, setToolbarPosition] = useState({ x: 0, y: 0 });
+  const [editorStats, setEditorStats] = useState<EditorStats>({
+    wordCount: 0,
+    charCount: 0,
+    timeSpent: 0,
+    linesCount: 0,
+    readingTime: 0,
+  });
+  const [commands] = useState(new Map());
 
   // Get editor state and actions from Zustand store
   const {
-    content,
-    commands,
-    stats,
-    saveStatus,
-    showToolbar,
-    toolbarPosition,
-    setContent,
+    commands: storeCommands,
     setSelection,
-    setToolbarPosition,
+    setToolbarPosition: setStoreToolbarPosition,
+    showToolbar,
     setShowToolbar,
     initialize,
     destroy,
     undo,
     redo,
   } = useEditorStore();
+
+  // Update content when initialNote changes
+  useEffect(() => {
+    if (content !== initialNote?.content) {
+      setContent(initialNote?.content || '');
+    }
+  }, [initialNote?.content]);
+
+  const handleChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      setContent(e.target.value);
+      setSaveStatus('saving');
+    },
+    []
+  );
+
+  const handleToggleAmbientSound = useCallback(() => {
+    setIsAmbientSound(prev => !prev);
+  }, []);
 
   // Initialize editor with plugins
   useEffect(() => {
@@ -50,9 +74,9 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
   }, [destroy, initialize, initialNote?.content, setContent]);
 
   // Handle keyboard shortcuts
-  const handleKeyboardShortcuts = useCallback(
-    (e: KeyboardEvent) => {
-      if (e.key === 'z' && (e.metaKey || e.ctrlKey)) {
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
         e.preventDefault();
         if (e.shiftKey) {
           redo();
@@ -60,17 +84,11 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
           undo();
         }
       }
-    },
-    [redo, undo]
-  );
-
-  // Add keyboard event listeners
-  useEffect(() => {
-    window.addEventListener('keydown', handleKeyboardShortcuts);
-    return () => {
-      window.removeEventListener('keydown', handleKeyboardShortcuts);
     };
-  }, [handleKeyboardShortcuts]);
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [redo, undo]);
 
   // Handle selection changes for toolbar positioning
   const handleSelectionChange = useCallback(
@@ -168,24 +186,6 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
     };
   }, [content, initialNote?.id, saveStatus, updateNote]);
 
-  // Handle content change
-  const handleContentChange = useCallback(
-    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      setContent(e.target.value);
-    },
-    [setContent]
-  );
-
-  const handleEditorError = (error: Error, errorInfo: React.ErrorInfo) => {
-    console.error('Editor Error:', error, errorInfo);
-    // Here you could send the error to your error reporting service
-  };
-
-  const handleToolbarError = (error: Error, errorInfo: React.ErrorInfo) => {
-    console.error('Toolbar Error:', error, errorInfo);
-    // Here you could send the error to your error reporting service
-  };
-
   const handleEditorReset = () => {
     // Reset editor state
     setContent('');
@@ -198,25 +198,17 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
     });
   };
 
-  if (content !== initialNote?.content) {
-    setContent(initialNote?.content || '');
-  }
-
   return (
-    <EditorErrorBoundary
-      onError={handleEditorError}
-      onReset={handleEditorReset}
-    >
-      <div className="flex flex-col h-full">
-        {/* Editor Header */}
-        <header className="flex items-center justify-between p-4 border-b border-ink-faint">
+    <EditorErrorBoundary onReset={handleEditorReset}>
+      <div className="flex h-full flex-col">
+        <header className="flex items-center justify-between border-b border-border px-4 py-2">
           <div className="flex items-center space-x-4">
-            <h1 className="text-xl font-medium text-ink-rich">
-              {initialNote?.title || 'Untitled Note'}
-            </h1>
-            <span className="text-sm text-ink-muted">
-              {stats.wordCount} words · {stats.readingTime} min read
-            </span>
+            <EditorToolbar
+              stats={editorStats}
+              saveStatus={saveStatus}
+              isAmbientSound={isAmbientSound}
+              onToggleAmbientSound={handleToggleAmbientSound}
+            />
           </div>
           <div className="flex items-center space-x-2">
             <span className="text-sm text-ink-muted">
@@ -228,7 +220,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
         {/* Editor Content */}
         <div className="flex-1 overflow-auto">
           <VirtualTextarea
-            ref={textareaRef}
+            textareaRef={textareaRef}
             content={content}
             onChange={handleChange}
             onSelect={handleSelectionChange}
@@ -239,7 +231,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
         {showToolbar && (
           <FloatingFormatToolbar
             position={toolbarPosition}
-            commands={Array.from(commands.values())}
+            commands={commands}
           />
         )}
       </div>
