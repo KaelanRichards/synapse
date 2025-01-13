@@ -73,25 +73,31 @@ export const FormatPlugin = createPlugin<FormatState>({
 
   getCommands: (editor: Editor) => {
     const format = (type: FormatType) => {
-      const { selection } = editor.state;
-      if (!selection) return;
+      // Check if editor is still valid
+      if (!editor || !editor.getSelectedText) {
+        console.warn('Editor is no longer valid');
+        return;
+      }
+
+      // Get current selection from the store instead of editor.state
+      const selection = editor.getSelectedText();
+      if (!selection) {
+        console.warn('No text selected for formatting');
+        return;
+      }
 
       const prefix = getFormatPrefix(type);
       const suffix = getFormatSuffix(type);
 
-      const beforeSelection = editor.state.content.slice(0, selection.start);
-      const afterSelection = editor.state.content.slice(selection.end);
-      const selectedText = selection.text;
-
-      editor.state.content =
-        beforeSelection + prefix + selectedText + suffix + afterSelection;
-
-      // Update selection to include formatting
-      editor.state.selection = {
-        start: selection.start + prefix.length,
-        end: selection.end + prefix.length,
-        text: selectedText,
-      };
+      editor.dispatch({
+        type: 'FORMAT_TEXT',
+        payload: {
+          type,
+          prefix,
+          suffix,
+          selection,
+        },
+      });
     };
 
     // Return format commands

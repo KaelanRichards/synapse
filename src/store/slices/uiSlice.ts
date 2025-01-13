@@ -1,6 +1,6 @@
 import type { UIState, UIActions } from '../types';
 import type { StateCreator } from 'zustand';
-import type { EditorStore } from '../editorStore';
+import type { EditorStore } from '../types';
 
 interface UISliceState {
   isLocalFocusMode: boolean;

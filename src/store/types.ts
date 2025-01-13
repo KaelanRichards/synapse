@@ -43,6 +43,12 @@ export type FormatState = WritableDraft<{
 
 export interface FormatActions {
   format: (type: FormatType, selection: Selection) => void;
+  formatText: (params: {
+    type: FormatType;
+    prefix: string;
+    suffix: string;
+    selection: Selection;
+  }) => void;
   toggleBold: () => void;
   toggleItalic: () => void;
   toggleCode: () => void;

@@ -1,33 +1,15 @@
-import React, {
-  useEffect,
-  useCallback,
-  useState,
-  useRef,
-  ChangeEvent,
-} from 'react';
-import { cn } from '@/lib/utils';
+import React, { useEffect, useCallback, useState, useRef } from 'react';
 import { useNoteMutations } from '@/hooks/useNoteMutations';
 import { useSupabase } from '@/contexts/SupabaseContext';
 import { useRouter } from 'next/router';
 import { EditorToolbar } from './EditorToolbar';
 import { SearchReplaceToolbar } from './SearchReplaceToolbar';
-import { VirtualTextarea } from './VirtualTextarea';
+import { EditorContainer } from './EditorContainer';
 import AmbientSoundPlayer from '../AmbientSoundPlayer';
-import {
-  Bold as BoldIcon,
-  Italic as ItalicIcon,
-  Code as CodeIcon,
-  Quote as QuoteIcon,
-  List as ListIcon,
-  Heading1 as Heading1Icon,
-  Link as LinkIcon,
-} from 'lucide-react';
 import type {
-  FormatType,
   Selection,
   NoteEditorProps,
   SearchReplacePluginState,
-  AutosavePluginState,
 } from './types';
 import { KeyboardShortcutsPanel } from './KeyboardShortcutsPanel';
 import { SearchReplacePlugin } from './plugins/SearchReplacePlugin';
@@ -91,21 +73,14 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
 
   // Initialize editor with plugins
   useEffect(() => {
-    // Initialize editor
     initialize();
-
-    // Set initial content if provided
     if (initialNote?.content) {
       setContent(initialNote.content);
     }
-
-    // Register plugins
     defaultPlugins.forEach(plugin => {
       const instance = plugin;
       useEditorStore.getState().registerPlugin(instance);
     });
-
-    // Cleanup
     return () => {
       destroy();
     };
@@ -116,7 +91,6 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
     (event: KeyboardEvent) => {
       const { key, ctrlKey, metaKey, shiftKey } = event;
 
-      // Handle keyboard shortcuts
       if (ctrlKey || metaKey) {
         switch (key.toLowerCase()) {
           case 'z':
@@ -179,86 +153,78 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
   // Handle selection changes for toolbar positioning
   const handleSelectionChange = useCallback(
     (selection: Selection | null) => {
-      console.log('Selection changed:', selection);
+      console.log('Selection change triggered:', { selection });
       setSelection(selection);
 
       if (selection && selection.text && textareaRef.current) {
-        console.log('Selection is valid, calculating position');
+        console.log('Valid selection detected');
         const textarea = textareaRef.current;
         const { selectionStart, selectionEnd } = textarea;
 
-        // Create a temporary div to measure text dimensions
-        const div = document.createElement('div');
-        div.style.position = 'absolute';
-        div.style.visibility = 'hidden';
-        div.style.whiteSpace = 'pre-wrap';
-        div.style.wordWrap = 'break-word';
-        div.style.width = `${textarea.clientWidth}px`;
-        div.style.font = window.getComputedStyle(textarea).font;
-        div.style.padding = window.getComputedStyle(textarea).padding;
-        div.style.lineHeight = window.getComputedStyle(textarea).lineHeight;
+        // Get textarea position and dimensions
+        const textareaRect = textarea.getBoundingClientRect();
 
-        // Get text before cursor
-        const textBeforeCursor = textarea.value.substring(0, selectionStart);
-        const textSelection = textarea.value.substring(
+        // Create a temporary div to measure text dimensions
+        const measureDiv = document.createElement('div');
+        measureDiv.style.position = 'absolute';
+        measureDiv.style.visibility = 'hidden';
+        measureDiv.style.whiteSpace = 'pre-wrap';
+        measureDiv.style.width = `${textarea.clientWidth}px`;
+        measureDiv.style.font = window.getComputedStyle(textarea).font;
+        measureDiv.style.lineHeight =
+          window.getComputedStyle(textarea).lineHeight;
+        measureDiv.style.padding = window.getComputedStyle(textarea).padding;
+
+        // Get text before selection
+        const textBeforeSelection = textarea.value.substring(0, selectionStart);
+        const selectedText = textarea.value.substring(
           selectionStart,
           selectionEnd
         );
 
-        // Create marker for position
-        const markerSpan = document.createElement('span');
-        div.textContent = textBeforeCursor;
-        div.appendChild(markerSpan);
-        markerSpan.textContent = textSelection;
+        // Create span for measurement
+        const measureSpan = document.createElement('span');
+        measureDiv.textContent = textBeforeSelection;
+        measureDiv.appendChild(measureSpan);
+        measureSpan.textContent = selectedText;
 
-        // Add to DOM temporarily to measure
-        document.body.appendChild(div);
+        // Add to DOM temporarily
+        document.body.appendChild(measureDiv);
 
-        // Get position relative to textarea
-        const markerRect = markerSpan.getBoundingClientRect();
-        const textareaRect = textarea.getBoundingClientRect();
-
-        // Calculate position accounting for scroll
-        const scrollTop =
-          window.pageYOffset || document.documentElement.scrollTop;
-        const scrollLeft =
-          window.pageXOffset || document.documentElement.scrollLeft;
-
-        const x =
+        // Get the position of the selection
+        const spanRect = measureSpan.getBoundingClientRect();
+        const selectionTop =
+          textareaRect.top +
+          (spanRect.top - measureDiv.getBoundingClientRect().top);
+        const selectionLeft =
           textareaRect.left +
-          scrollLeft +
-          (markerRect.left - textareaRect.left + markerRect.width / 2);
-        const y =
-          textareaRect.top + scrollTop + (markerRect.top - textareaRect.top);
-
-        console.log('Calculated position:', { x, y });
+          (spanRect.left - measureDiv.getBoundingClientRect().left);
+        const selectionWidth = spanRect.width;
 
         // Cleanup
-        document.body.removeChild(div);
+        document.body.removeChild(measureDiv);
 
-        setToolbarPosition({
+        // Calculate toolbar position
+        const x = selectionLeft + selectionWidth / 2;
+        const y = selectionTop;
+
+        console.log('Toolbar position calculated:', {
           x,
           y,
+          textareaRect,
+          selectionTop,
+          selectionLeft,
         });
+        setToolbarPosition({ x, y });
         setShowToolbar(true);
-        console.log('Toolbar should be visible at:', { x, y });
+        console.log('showToolbar set to true');
       } else {
-        console.log('Selection is not valid, hiding toolbar');
+        console.log('Invalid selection, hiding toolbar');
         setShowToolbar(false);
       }
     },
     [setSelection, setToolbarPosition, setShowToolbar]
   );
-
-  // Log commands for debugging
-  useEffect(() => {
-    console.log(
-      'Available format commands:',
-      Array.from(commands.values())
-        .filter(cmd => cmd.category === 'Format')
-        .map(cmd => cmd.name)
-    );
-  }, [commands]);
 
   // Autosave functionality
   useEffect(() => {
@@ -282,7 +248,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
 
   // Handle content change
   const handleContentChange = useCallback(
-    (e: ChangeEvent<HTMLTextAreaElement>) => {
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       setContent(e.target.value);
     },
     [setContent]
@@ -303,80 +269,17 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
         onToggleTypewriterMode={toggleTypewriterMode}
       />
 
-      <div className="relative flex-1 overflow-auto">
-        {/* Floating Format Toolbar */}
-        {showToolbar && (
-          <div
-            className="fixed z-50 transform -translate-x-1/2 floating-toolbar"
-            style={{
-              left: toolbarPosition.x,
-              top: Math.max(toolbarPosition.y - 40, 10),
-              pointerEvents: 'auto',
-            }}
-          >
-            <div className="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-2 flex space-x-2 border border-gray-200 dark:border-gray-700 min-w-[200px]">
-              <button
-                onClick={() => commands.get('format-bold')?.execute()}
-                className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200"
-                title="Bold (⌘B)"
-              >
-                <BoldIcon className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => commands.get('format-italic')?.execute()}
-                className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200"
-                title="Italic (⌘I)"
-              >
-                <ItalicIcon className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => commands.get('format-code')?.execute()}
-                className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200"
-                title="Code (⌘E)"
-              >
-                <CodeIcon className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => commands.get('format-heading')?.execute()}
-                className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200"
-                title="Heading (⌘H)"
-              >
-                <Heading1Icon className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => commands.get('format-link')?.execute()}
-                className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200"
-                title="Link (⌘K)"
-              >
-                <LinkIcon className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => commands.get('format-quote')?.execute()}
-                className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200"
-                title="Quote (⇧⌘.)"
-              >
-                <QuoteIcon className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => commands.get('format-list')?.execute()}
-                className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200"
-                title="List (⌘L)"
-              >
-                <ListIcon className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        )}
-
-        <VirtualTextarea
-          content={content}
-          onChange={handleContentChange}
-          onSelect={handleSelectionChange}
-          textareaRef={textareaRef}
-          isLocalFocusMode={isLocalFocusMode}
-          isParagraphFocus={isParagraphFocus}
-        />
-      </div>
+      <EditorContainer
+        content={content}
+        showToolbar={showToolbar}
+        toolbarPosition={toolbarPosition}
+        commands={commands}
+        isLocalFocusMode={isLocalFocusMode}
+        isParagraphFocus={isParagraphFocus}
+        textareaRef={textareaRef}
+        onContentChange={handleContentChange}
+        onSelectionChange={handleSelectionChange}
+      />
 
       {searchReplaceState?.isOpen && (
         <SearchReplaceToolbar

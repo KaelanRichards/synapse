@@ -50,8 +50,17 @@ export const createEditorAdapter = (store: EditorStore): Editor => {
     plugins: store.plugins,
     commands: store.commands,
     decorations: store.decorations,
+    cleanupFunctions: store.cleanupFunctions,
     state: store,
-    dispatch: () => {},
+    dispatch: (action: any) => {
+      if (action.type === 'FORMAT_TEXT') {
+        store.formatText(action.payload);
+      } else if (action.type === 'SET_CONTENT') {
+        store.setContent(action.payload);
+      } else if (action.type === 'SET_SELECTION') {
+        store.setSelection(action.payload);
+      }
+    },
     subscribe: () => () => {},
     registerPlugin: store.registerPlugin,
     unregisterPlugin: store.unregisterPlugin,
@@ -61,6 +70,8 @@ export const createEditorAdapter = (store: EditorStore): Editor => {
     removeDecoration: store.removeDecoration,
     on: (event: string, handler: (...args: any[]) => void) => {},
     off: (event: string, handler: (...args: any[]) => void) => {},
+    update: (updater: () => void) => updater(),
+    getSelectedText: () => store.selection,
   };
 };
 

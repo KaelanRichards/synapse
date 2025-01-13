@@ -11,6 +11,7 @@ import type {
   Plugin,
   Selection,
   UndoStackItem,
+  FormatType,
 } from '@/components/editor/types';
 
 enableMapSet();
@@ -105,6 +106,34 @@ const useEditorStore = create<EditorStore>()(
       // Run after format hooks
       state.runAfterFormat(type, selection);
     },
+
+    // Format text with prefix and suffix
+    formatText: ({
+      type,
+      prefix,
+      suffix,
+      selection,
+    }: {
+      type: FormatType;
+      prefix: string;
+      suffix: string;
+      selection: Selection;
+    }) => {
+      set(state => {
+        const beforeSelection = state.content.slice(0, selection.start);
+        const afterSelection = state.content.slice(selection.end);
+        const selectedText = selection.text;
+
+        state.content =
+          beforeSelection + prefix + selectedText + suffix + afterSelection;
+        state.selection = {
+          start: selection.start + prefix.length,
+          end: selection.end + prefix.length,
+          text: selectedText,
+        };
+      });
+    },
+
     toggleBold: () => {
       const state = get();
       if (state.selection) state.format('bold', state.selection);
@@ -532,6 +561,23 @@ const useEditorStore = create<EditorStore>()(
         state.selection = lastItem.selection;
         state.lastUndoTime = Date.now();
       });
+    },
+
+    dispatch: (action: { type: string; payload: any }) => {
+      const state = get();
+      switch (action.type) {
+        case 'SET_CONTENT':
+          state.setContent(action.payload);
+          break;
+        case 'SET_SELECTION':
+          state.setSelection(action.payload);
+          break;
+        case 'FORMAT_TEXT':
+          state.formatText(action.payload);
+          break;
+        default:
+          console.warn(`Unknown action type: ${action.type}`);
+      }
     },
   }))
 );

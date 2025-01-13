@@ -78,6 +78,8 @@ export interface Editor {
   save?: () => Promise<void>;
   on: (event: string, handler: (...args: any[]) => void) => void;
   off: (event: string, handler: (...args: any[]) => void) => void;
+  update: (updater: () => void) => void;
+  getSelectedText: () => Selection | null;
   hooks?: {
     beforeContentChange?: (content: string) => string;
     afterContentChange?: (content: string) => void;
