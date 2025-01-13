@@ -1,4 +1,10 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, {
+  useEffect,
+  useState,
+  useRef,
+  useCallback,
+  useMemo,
+} from 'react';
 import { Textarea, Badge } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { useNoteMutations } from '@/hooks/useNoteMutations';
@@ -16,6 +22,8 @@ import {
   SpeakerWaveIcon,
   SpeakerXMarkIcon,
 } from '@heroicons/react/24/outline';
+import { useVirtualizer } from '@tanstack/react-virtual';
+import { useDebounce } from '@/hooks/useDebounce';
 
 interface NoteEditorProps {
   initialNote?: {
@@ -30,7 +38,60 @@ interface EditorStats {
   wordCount: number;
   charCount: number;
   timeSpent: number;
+  linesCount: number;
+  readingTime: number;
 }
+
+interface Selection {
+  start: number;
+  end: number;
+  text: string;
+}
+
+interface UndoStackItem {
+  content: string;
+  selection: Selection;
+  timestamp: number;
+}
+
+const UNDO_DELAY = 1000; // Minimum time between undo stack items
+const MAX_UNDO_STACK = 100;
+const SAVE_DELAY = 1000;
+const LINE_HEIGHT = 24;
+
+const getStatusVariant = (
+  status: 'saved' | 'saving' | 'unsaved'
+): 'success' | 'warning' | 'error' => {
+  switch (status) {
+    case 'saved':
+      return 'success';
+    case 'saving':
+      return 'warning';
+    case 'unsaved':
+      return 'error';
+  }
+};
+
+const formatTime = (seconds: number): string => {
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 1) return 'Just started';
+  if (minutes === 1) return '1 minute';
+  return `${minutes} minutes`;
+};
+
+const formatText = (
+  type: 'bold' | 'italic' | 'heading',
+  selectedText: string
+): string => {
+  switch (type) {
+    case 'bold':
+      return `**${selectedText}**`;
+    case 'italic':
+      return `_${selectedText}_`;
+    case 'heading':
+      return `\n# ${selectedText}`;
+  }
+};
 
 const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
   const [content, setContent] = useState(initialNote?.content ?? '');
@@ -45,192 +106,286 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
     wordCount: 0,
     charCount: 0,
     timeSpent: 0,
+    linesCount: 0,
+    readingTime: 0,
   });
   const [isAmbientSound, setIsAmbientSound] = useState(false);
+  const [undoStack, setUndoStack] = useState<UndoStackItem[]>([]);
+  const [redoStack, setRedoStack] = useState<UndoStackItem[]>([]);
+  const [lastUndoTime, setLastUndoTime] = useState(0);
+  const [selections, setSelections] = useState<Selection[]>([]);
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const contentRef = useRef(content);
   const { updateNote } = useNoteMutations();
-  const { state: editorState } = useEditor();
+  const { state: editorState, setTypewriterMode } = useEditor();
 
-  // Update content when initialNote changes
-  useEffect(() => {
-    if (initialNote?.content) {
-      setContent(initialNote.content);
-      updateStats(initialNote.content);
-    }
-  }, [initialNote?.content]);
+  const debouncedContent = useDebounce(content, SAVE_DELAY);
 
-  // Update stats
-  const updateStats = (text: string) => {
+  // Virtual scrolling for large documents
+  const lines = useMemo(() => content.split('\n'), [content]);
+  const parentRef = useRef<HTMLDivElement>(null);
+
+  const virtualizer = useVirtualizer({
+    count: lines.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => LINE_HEIGHT,
+    overscan: 5,
+  });
+
+  // Efficient stats calculation
+  const updateStats = useCallback((text: string) => {
     const words = text.trim().split(/\s+/).filter(Boolean).length;
+    const lines = text.split('\n').length;
+    const readingTime = Math.ceil(words / 200); // Average reading speed of 200 wpm
+
     setStats(prev => ({
       ...prev,
       wordCount: words,
       charCount: text.length,
+      linesCount: lines,
+      readingTime,
     }));
-  };
-
-  // Track time spent
-  useEffect(() => {
-    const timer = setInterval(() => {
-      if (document.hasFocus() && textareaRef.current?.matches(':focus')) {
-        setStats(prev => ({ ...prev, timeSpent: prev.timeSpent + 1 }));
-      }
-    }, 1000);
-    return () => clearInterval(timer);
   }, []);
 
-  // Save debounce timer
-  useEffect(() => {
-    if (!initialNote?.id) return;
-    const noteId = initialNote.id;
+  // Optimized content change handler
+  const handleContentChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const newContent = e.target.value;
+      setContent(newContent);
+      contentRef.current = newContent;
 
-    const timer = setTimeout(() => {
-      if (content !== initialNote.content) {
-        setSaveStatus('saving');
-        updateNote.mutate(
-          { id: noteId, content },
-          {
-            onSuccess: () => setSaveStatus('saved'),
-            onError: () => setSaveStatus('unsaved'),
-          }
-        );
-      }
-    }, 1000);
-
-    return () => clearTimeout(timer);
-  }, [content, initialNote, updateNote]);
-
-  // Handle Escape key to exit modes
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        if (showToolbar) setShowToolbar(false);
-        if (isLocalFocusMode) setIsLocalFocusMode(false);
-        if (isParagraphFocus) setIsParagraphFocus(false);
-      }
-    };
-    window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
-  }, [isLocalFocusMode, showToolbar, isParagraphFocus]);
-
-  // Handle text selection for toolbar
-  useEffect(() => {
-    const handleSelection = () => {
-      const textarea = textareaRef.current;
-      if (!textarea) return;
-
-      const selectedText = textarea.value.substring(
-        textarea.selectionStart,
-        textarea.selectionEnd
+      // Update all selections with new content
+      setSelections(prev =>
+        prev.map(selection => ({
+          ...selection,
+          text: newContent.substring(selection.start, selection.end),
+        }))
       );
 
-      if (!selectedText) {
-        setShowToolbar(false);
-        return;
+      // Add to undo stack if enough time has passed
+      const now = Date.now();
+      if (now - lastUndoTime > UNDO_DELAY) {
+        setUndoStack(prev => {
+          const newStack = [
+            ...prev,
+            {
+              content: newContent,
+              selection: {
+                start: e.target.selectionStart,
+                end: e.target.selectionEnd,
+                text: newContent.substring(
+                  e.target.selectionStart,
+                  e.target.selectionEnd
+                ),
+              },
+              timestamp: now,
+            },
+          ].slice(-MAX_UNDO_STACK);
+          return newStack;
+        });
+        setLastUndoTime(now);
+        setRedoStack([]); // Clear redo stack on new changes
       }
 
-      // Get the caret coordinates
-      const start = textarea.selectionStart;
-      const end = textarea.selectionEnd;
+      // Debounced stats update
+      updateStats(newContent);
+    },
+    [lastUndoTime, updateStats]
+  );
 
-      // Create a temporary div to measure the text position
-      const div = document.createElement('div');
-      div.style.cssText = `
-        position: absolute;
-        top: 0;
-        left: 0;
-        visibility: hidden;
-        white-space: pre-wrap;
-        word-wrap: break-word;
-        overflow-wrap: break-word;
-        box-sizing: border-box;
-        padding: ${window.getComputedStyle(textarea).padding};
-        width: ${textarea.offsetWidth}px;
-        font: ${window.getComputedStyle(textarea).font};
-        line-height: ${window.getComputedStyle(textarea).lineHeight};
-        letter-spacing: ${window.getComputedStyle(textarea).letterSpacing};
-      `;
+  // Undo/Redo handlers
+  const handleUndo = useCallback(() => {
+    if (undoStack.length > 1) {
+      const current = undoStack[undoStack.length - 1];
+      const previous = undoStack[undoStack.length - 2];
 
-      // Add text up to the selection
-      const textBeforeSelection = textarea.value.substring(0, start);
-      const lines = textBeforeSelection.split('\n');
+      setRedoStack(prev => [...prev, current]);
+      setUndoStack(prev => prev.slice(0, -1));
+      setContent(previous.content);
 
-      // Create spans for each line to preserve line breaks
-      lines.forEach((line, index) => {
-        if (index > 0) div.appendChild(document.createElement('br'));
-        div.appendChild(document.createTextNode(line));
-      });
+      if (textareaRef.current) {
+        textareaRef.current.setSelectionRange(
+          previous.selection.start,
+          previous.selection.end
+        );
+      }
+    }
+  }, [undoStack]);
 
-      // Add a span for measuring the selection
-      const span = document.createElement('span');
-      span.textContent = selectedText;
-      div.appendChild(span);
+  const handleRedo = useCallback(() => {
+    if (redoStack.length > 0) {
+      const next = redoStack[redoStack.length - 1];
 
-      document.body.appendChild(div);
-      const spanRect = span.getBoundingClientRect();
-      const textareaRect = textarea.getBoundingClientRect();
+      setUndoStack(prev => [...prev, next]);
+      setRedoStack(prev => prev.slice(0, -1));
+      setContent(next.content);
 
-      // Calculate scroll offset
-      const scrollTop = textarea.scrollTop;
+      if (textareaRef.current) {
+        textareaRef.current.setSelectionRange(
+          next.selection.start,
+          next.selection.end
+        );
+      }
+    }
+  }, [redoStack]);
 
-      // Calculate the absolute position of the selection
-      const x = textareaRect.left + spanRect.left;
-      const y = textareaRect.top + spanRect.top - scrollTop;
+  // Multiple cursor support
+  const handleAddCursor = useCallback(
+    (e: React.MouseEvent<HTMLTextAreaElement>) => {
+      if (e.altKey && textareaRef.current) {
+        const clickPosition = getClickPosition(e, textareaRef.current);
+        setSelections(prev => [
+          ...prev,
+          {
+            start: clickPosition,
+            end: clickPosition,
+            text: '',
+          },
+        ]);
+      }
+    },
+    []
+  );
 
-      document.body.removeChild(div);
-
-      setToolbarPosition({
-        x: x + spanRect.width / 2,
-        y: y,
-      });
-      setShowToolbar(true);
-    };
-
+  // Selection handler for toolbar
+  const handleSelection = useCallback(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
 
-    const events = ['select', 'click', 'keyup', 'mouseup'];
-    events.forEach(event => textarea.addEventListener(event, handleSelection));
+    const selection = window.getSelection();
+    if (!selection?.toString()) {
+      setShowToolbar(false);
+      return;
+    }
 
-    return () => {
-      events.forEach(event =>
-        textarea.removeEventListener(event, handleSelection)
-      );
-    };
+    const range = selection.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+    setToolbarPosition({
+      x: rect.left + rect.width / 2,
+      y: rect.top,
+    });
+    setShowToolbar(true);
   }, []);
 
-  // Typewriter mode: Keep cursor in view
+  // Selection effect
   useEffect(() => {
-    if (!editorState.typewriterMode.enabled || !textareaRef.current) return;
-
     const textarea = textareaRef.current;
-    const handleInput = () => {
-      const selection = window.getSelection();
-      if (!selection?.focusNode) return;
+    if (!textarea) return;
 
-      // Find the caret position
-      const range = selection.getRangeAt(0);
-      const rect = range.getBoundingClientRect();
+    textarea.addEventListener('mouseup', handleSelection);
+    textarea.addEventListener('keyup', handleSelection);
+    return () => {
+      textarea.removeEventListener('mouseup', handleSelection);
+      textarea.removeEventListener('keyup', handleSelection);
+    };
+  }, [handleSelection]);
 
-      // Scroll the caret into the middle of the viewport
-      const viewportHeight = window.innerHeight;
-      const desiredPosition = viewportHeight / 2;
-      const scrollAmount = rect.top - desiredPosition;
+  // Smart selection
+  const handleSmartSelect = useCallback(
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (!textareaRef.current) return;
 
-      if (editorState.typewriterMode.scrollIntoView) {
-        window.scrollBy({ top: scrollAmount, behavior: 'smooth' });
+      if (e.ctrlKey || e.metaKey) {
+        const textarea = textareaRef.current;
+        const { selectionStart, selectionEnd } = textarea;
+        const text = textarea.value;
+
+        switch (e.key) {
+          case 'l': // Select line
+            e.preventDefault();
+            const lineStart = text.lastIndexOf('\n', selectionStart - 1) + 1;
+            const lineEnd = text.indexOf('\n', selectionEnd);
+            textarea.setSelectionRange(
+              lineStart,
+              lineEnd === -1 ? text.length : lineEnd
+            );
+            break;
+          case 'w': // Select word
+            e.preventDefault();
+            const wordBoundaries = findWordBoundaries(text, selectionStart);
+            textarea.setSelectionRange(
+              wordBoundaries.start,
+              wordBoundaries.end
+            );
+            break;
+          case 'p': // Select paragraph
+            e.preventDefault();
+            const paragraphBoundaries = findParagraphBoundaries(
+              text,
+              selectionStart
+            );
+            textarea.setSelectionRange(
+              paragraphBoundaries.start,
+              paragraphBoundaries.end
+            );
+            break;
+        }
+      }
+    },
+    []
+  );
+
+  // Auto-save with optimistic updates
+  useEffect(() => {
+    if (!initialNote?.id || debouncedContent === initialNote.content) return;
+
+    setSaveStatus('saving');
+    updateNote.mutate(
+      { id: initialNote.id, content: debouncedContent },
+      {
+        onSuccess: () => setSaveStatus('saved'),
+        onError: () => setSaveStatus('unsaved'),
+      }
+    );
+  }, [debouncedContent, initialNote, updateNote]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyboard = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey) {
+        switch (e.key.toLowerCase()) {
+          case 'z':
+            e.preventDefault();
+            handleUndo();
+            break;
+          case 'y':
+            e.preventDefault();
+            handleRedo();
+            break;
+          case 'f':
+            e.preventDefault();
+            setIsLocalFocusMode(prev => !prev);
+            break;
+          case 'p':
+            e.preventDefault();
+            setIsParagraphFocus(prev => !prev);
+            break;
+        }
       }
     };
 
-    textarea.addEventListener('input', handleInput);
-    return () => textarea.removeEventListener('input', handleInput);
-  }, [
-    editorState.typewriterMode.enabled,
-    editorState.typewriterMode.scrollIntoView,
-  ]);
+    window.addEventListener('keydown', handleKeyboard);
+    return () => window.removeEventListener('keydown', handleKeyboard);
+  }, [handleUndo, handleRedo]);
 
-  // Format text
-  const formatText = (type: 'bold' | 'italic' | 'heading') => {
+  // Add this effect after the keyboard shortcuts effect
+  useEffect(() => {
+    if (!textareaRef.current) return;
+
+    // Apply all selections to the textarea
+    selections.forEach(selection => {
+      const range = document.createRange();
+      const textNode = textareaRef.current!.firstChild;
+      if (textNode) {
+        range.setStart(textNode, selection.start);
+        range.setEnd(textNode, selection.end);
+        window.getSelection()?.addRange(range);
+      }
+    });
+  }, [selections]);
+
+  const handleFormatText = (type: 'bold' | 'italic' | 'heading') => {
     const textarea = textareaRef.current;
     if (!textarea) return;
 
@@ -238,19 +393,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
     const end = textarea.selectionEnd;
     const selectedText = content.substring(start, end);
 
-    let newText = '';
-    switch (type) {
-      case 'bold':
-        newText = `**${selectedText}**`;
-        break;
-      case 'italic':
-        newText = `_${selectedText}_`;
-        break;
-      case 'heading':
-        newText = `\n# ${selectedText}`;
-        break;
-    }
-
+    const newText = formatText(type, selectedText);
     const newContent =
       content.substring(0, start) + newText + content.substring(end);
     setContent(newContent);
@@ -258,221 +401,220 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
     setShowToolbar(false);
   };
 
-  const SaveStatusIcon = {
-    saved: CheckIcon,
-    saving: CloudArrowUpIcon,
-    unsaved: ExclamationCircleIcon,
-  }[saveStatus];
-
-  const getStatusVariant = (
-    status: typeof saveStatus
-  ): 'success' | 'warning' | 'error' => {
-    switch (status) {
-      case 'saved':
-        return 'success';
-      case 'saving':
-        return 'warning';
-      case 'unsaved':
-        return 'error';
-    }
-  };
-
-  const statusVariant = getStatusVariant(saveStatus);
-
-  const formatTime = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 1) return 'Just started';
-    if (minutes === 1) return '1 minute';
-    return `${minutes} minutes`;
-  };
-
+  // Render optimized editor
   return (
     <div
       className={cn(
-        'h-full w-full transition-all duration-normal ease-gentle',
-        'bg-surface-pure',
-        'flex flex-col relative',
-        isLocalFocusMode && 'bg-opacity-98',
-        editorState.focusMode.enabled && 'bg-opacity-98'
+        'relative w-full h-full min-h-screen',
+        isLocalFocusMode && 'bg-neutral-50 dark:bg-neutral-900',
+        isParagraphFocus && 'prose-lg'
       )}
+      ref={parentRef}
     >
-      {/* Floating Toolbar */}
-      {showToolbar && (
-        <div
-          className="fixed z-50 bg-surface-pure shadow-floating rounded-lg p-1.5 flex items-center space-x-1 transform -translate-x-1/2 floating-toolbar"
-          style={{
-            left: toolbarPosition.x,
-            top: Math.max(0, toolbarPosition.y - 45),
-            pointerEvents: 'auto',
-          }}
-        >
-          <button
-            onClick={() => formatText('bold')}
-            className="p-1.5 hover:bg-surface-faint rounded-md text-ink-muted hover:text-ink-rich"
-            title="Bold"
-          >
-            <span className="font-bold">B</span>
-          </button>
-          <button
-            onClick={() => formatText('italic')}
-            className="p-1.5 hover:bg-surface-faint rounded-md text-ink-muted hover:text-ink-rich"
-            title="Italic"
-          >
-            <span className="italic">I</span>
-          </button>
-          <button
-            onClick={() => formatText('heading')}
-            className="p-1.5 hover:bg-surface-faint rounded-md text-ink-muted hover:text-ink-rich"
-            title="Heading"
-          >
-            <span className="font-bold">H</span>
-          </button>
-        </div>
-      )}
-
-      {/* Ambient Sound Player */}
-      <AmbientSoundPlayer
-        isPlaying={isAmbientSound}
-        onClose={() => setIsAmbientSound(false)}
-      />
-
-      {/* Editor Header */}
-      <div
-        className={cn(
-          'flex items-center justify-between px-6 py-3 shrink-0',
-          'border-b border-ink-faint/20',
-          'transition-opacity duration-normal',
-          (isLocalFocusMode || editorState.focusMode.enabled) &&
-            'opacity-0 hover:opacity-100'
-        )}
-      >
-        <div className="flex items-center space-x-4">
-          <h1 className="text-lg font-medium text-ink-rich">
-            {initialNote?.title || 'Untitled Note'}
-          </h1>
-          <div className="flex items-center space-x-1.5">
-            <SaveStatusIcon className="h-4 w-4" />
-            <Badge variant={statusVariant}>
-              {saveStatus === 'saved'
-                ? 'Saved'
-                : saveStatus === 'saving'
-                  ? 'Saving...'
-                  : 'Unsaved'}
-            </Badge>
-          </div>
+      <div className="sticky top-0 z-10 flex items-center justify-between p-2 bg-white/80 dark:bg-black/80 backdrop-blur">
+        <div className="flex items-center space-x-2">
+          <Badge variant={getStatusVariant(saveStatus)}>
+            {saveStatus === 'saved' && <CheckIcon className="w-4 h-4" />}
+            {saveStatus === 'saving' && (
+              <CloudArrowUpIcon className="w-4 h-4 animate-spin" />
+            )}
+            {saveStatus === 'unsaved' && (
+              <ExclamationCircleIcon className="w-4 h-4" />
+            )}
+            {saveStatus}
+          </Badge>
+          <Badge variant="secondary">{stats.wordCount} words</Badge>
+          <Badge variant="secondary">{formatTime(stats.timeSpent)}</Badge>
+          <Badge variant="secondary">~{stats.readingTime} min read</Badge>
         </div>
 
         <div className="flex items-center space-x-2">
-          {/* Stats */}
-          <div className="text-sm text-ink-muted space-x-3 mr-4">
-            <span>{stats.wordCount} words</span>
-            <span>{formatTime(stats.timeSpent)}</span>
-          </div>
-
-          {/* Controls */}
           <button
-            onClick={() => setIsParagraphFocus(!isParagraphFocus)}
-            className={cn(
-              'p-1.5 rounded-md transition-all duration-normal ease-gentle',
-              'text-ink-muted hover:text-ink-rich',
-              'hover:bg-surface-faint',
-              isParagraphFocus &&
-                'text-accent-primary hover:text-accent-primary/90'
-            )}
-            title={
-              isParagraphFocus
-                ? 'Disable Paragraph Focus'
-                : 'Enable Paragraph Focus'
-            }
-          >
-            {isParagraphFocus ? (
-              <BoltSlashIcon
-                className={cn('h-5 w-5', isParagraphFocus && 'sound-wave')}
-              />
-            ) : (
-              <BoltIcon className="h-5 w-5" />
-            )}
-          </button>
-
-          <button
-            onClick={() => setIsAmbientSound(!isAmbientSound)}
-            className={cn(
-              'p-1.5 rounded-md transition-all duration-normal ease-gentle',
-              'text-ink-muted hover:text-ink-rich',
-              'hover:bg-surface-faint',
-              isAmbientSound &&
-                'text-accent-primary hover:text-accent-primary/90'
-            )}
-            title={
-              isAmbientSound ? 'Disable Ambient Sound' : 'Enable Ambient Sound'
-            }
-          >
-            {isAmbientSound ? (
-              <SpeakerWaveIcon
-                className={cn('h-5 w-5', isAmbientSound && 'sound-wave')}
-              />
-            ) : (
-              <SpeakerXMarkIcon className="h-5 w-5" />
-            )}
-          </button>
-
-          <button
-            onClick={() => setIsLocalFocusMode(!isLocalFocusMode)}
-            className={cn(
-              'p-1.5 rounded-md transition-all duration-normal ease-gentle',
-              'text-ink-muted hover:text-ink-rich',
-              'hover:bg-surface-faint',
-              isLocalFocusMode &&
-                'text-accent-primary hover:text-accent-primary/90'
-            )}
-            title={isLocalFocusMode ? 'Exit Focus Mode' : 'Enter Focus Mode'}
+            onClick={() => setIsLocalFocusMode(prev => !prev)}
+            className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800"
           >
             {isLocalFocusMode ? (
-              <ArrowsPointingOutIcon className="h-5 w-5" />
+              <ArrowsPointingOutIcon className="w-5 h-5" />
             ) : (
-              <ArrowsPointingInIcon className="h-5 w-5" />
+              <ArrowsPointingInIcon className="w-5 h-5" />
+            )}
+          </button>
+          <button
+            onClick={() => setIsAmbientSound(prev => !prev)}
+            className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800"
+          >
+            {isAmbientSound ? (
+              <SpeakerWaveIcon className="w-5 h-5" />
+            ) : (
+              <SpeakerXMarkIcon className="w-5 h-5" />
+            )}
+          </button>
+          <button
+            onClick={() =>
+              setTypewriterMode({
+                enabled: !editorState.typewriterMode.enabled,
+              })
+            }
+            className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800"
+          >
+            {editorState.typewriterMode.enabled ? (
+              <BoltIcon className="w-5 h-5" />
+            ) : (
+              <BoltSlashIcon className="w-5 h-5" />
             )}
           </button>
         </div>
       </div>
 
-      {/* Editor Content */}
-      <div className="flex-1 overflow-y-auto">
-        <div
+      <div
+        className={cn(
+          'w-full max-w-3xl mx-auto px-4 py-8',
+          isLocalFocusMode && 'prose dark:prose-invert',
+          isParagraphFocus && 'prose-lg'
+        )}
+        style={{
+          height: `${virtualizer.getTotalSize()}px`,
+          position: 'relative',
+        }}
+      >
+        <Textarea
+          ref={textareaRef}
+          value={content}
+          onChange={handleContentChange}
+          onKeyDown={handleSmartSelect}
+          onClick={handleAddCursor}
           className={cn(
-            'max-w-2xl mx-auto transition-all duration-normal ease-gentle',
-            isLocalFocusMode || editorState.focusMode.enabled
-              ? 'px-4 py-12'
-              : 'px-6 py-8'
+            'w-full h-full resize-none bg-transparent',
+            'focus:ring-0 focus:outline-none',
+            'font-mono text-lg leading-relaxed',
+            'selection:bg-blue-100 dark:selection:bg-blue-900',
+            isLocalFocusMode && 'prose dark:prose-invert',
+            isParagraphFocus && 'prose-lg'
           )}
-        >
-          <Textarea
-            ref={textareaRef}
-            value={content}
-            onChange={e => {
-              setContent(e.target.value);
-              updateStats(e.target.value);
-            }}
-            className={cn(
-              'w-full min-h-[calc(100vh-16rem)] resize-none',
-              'bg-transparent border-none shadow-none focus-visible:ring-0',
-              'text-lg leading-relaxed',
-              isParagraphFocus && 'focus-paragraph',
-              {
-                'font-serif': editorState.fontFamily === 'serif',
-                'font-sans': editorState.fontFamily === 'sans',
-                'font-mono': editorState.fontFamily === 'mono',
-              }
-            )}
-            style={{
-              fontSize: `${editorState.fontSize}px`,
-            }}
-            placeholder="Start writing..."
-          />
-        </div>
+          style={{
+            height: '100%',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            transform: `translateY(${virtualizer.getVirtualItems()[0]?.start ?? 0}px)`,
+          }}
+        />
       </div>
+
+      {isAmbientSound && (
+        <AmbientSoundPlayer
+          isPlaying={isAmbientSound}
+          onClose={() => setIsAmbientSound(false)}
+        />
+      )}
+
+      {showToolbar && (
+        <div
+          className="fixed z-20 flex items-center space-x-1 bg-white dark:bg-neutral-800 rounded-lg shadow-lg p-1"
+          style={{
+            top: toolbarPosition.y - 40,
+            left: toolbarPosition.x - 100,
+          }}
+        >
+          <button
+            onClick={() => handleFormatText('bold')}
+            className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-700"
+          >
+            B
+          </button>
+          <button
+            onClick={() => handleFormatText('italic')}
+            className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-700"
+          >
+            I
+          </button>
+          <button
+            onClick={() => handleFormatText('heading')}
+            className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-700"
+          >
+            H
+          </button>
+        </div>
+      )}
     </div>
   );
+};
+
+// Utility functions
+const getClickPosition = (
+  e: React.MouseEvent<HTMLTextAreaElement>,
+  textarea: HTMLTextAreaElement
+) => {
+  const rect = textarea.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+
+  // Create a temporary div to measure text position
+  const div = document.createElement('div');
+  div.style.cssText = window.getComputedStyle(textarea).cssText;
+  div.style.height = 'auto';
+  div.style.position = 'absolute';
+  div.style.visibility = 'hidden';
+  div.textContent = textarea.value;
+
+  document.body.appendChild(div);
+  const position = getTextPositionFromPoint(div, x, y);
+  document.body.removeChild(div);
+
+  return position;
+};
+
+const findWordBoundaries = (text: string, position: number) => {
+  const before = text.slice(0, position).search(/\S+$/);
+  const after = text.slice(position).search(/\s/);
+
+  return {
+    start: before === -1 ? position : before,
+    end: after === -1 ? text.length : position + after,
+  };
+};
+
+const findParagraphBoundaries = (text: string, position: number) => {
+  const before = text.slice(0, position).search(/\n\s*\n[^\n]*$/);
+  const after = text.slice(position).search(/\n\s*\n/);
+
+  return {
+    start: before === -1 ? 0 : before + 2,
+    end: after === -1 ? text.length : position + after,
+  };
+};
+
+const getTextPositionFromPoint = (
+  element: HTMLElement,
+  x: number,
+  y: number
+) => {
+  const range = document.createRange();
+  const textNode = element.firstChild;
+
+  if (!textNode) return 0;
+
+  let position = 0;
+  let found = false;
+
+  for (let i = 0; i < textNode.textContent!.length && !found; i++) {
+    range.setStart(textNode, i);
+    range.setEnd(textNode, i + 1);
+
+    const rect = range.getBoundingClientRect();
+    if (
+      rect.top <= y &&
+      y <= rect.bottom &&
+      rect.left <= x &&
+      x <= rect.right
+    ) {
+      position = i;
+      found = true;
+    }
+  }
+
+  return position;
 };
 
 export default NoteEditor;
