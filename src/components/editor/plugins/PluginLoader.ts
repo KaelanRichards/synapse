@@ -71,7 +71,14 @@ export class PluginLoader {
 
       // Initialize plugin
       if (instance.init) {
-        const cleanup = instance.init(this.editor);
+        const cleanup = instance.init(
+          this.editor,
+          this.editor.eventBus || {
+            emit: () => {},
+            on: () => {},
+            off: () => {},
+          }
+        );
         if (cleanup) {
           // Store cleanup function for later
           const originalDestroy = instance.destroy;

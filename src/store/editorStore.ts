@@ -12,7 +12,7 @@ import type {
   UndoStackItem,
   FormatType,
 } from '@/components/editor/types';
-import type { EnhancedPlugin } from '@/components/editor/types/plugin';
+import type { Plugin } from '@/components/editor/types/plugin';
 
 enableMapSet();
 
@@ -371,7 +371,7 @@ const useEditorStore = create<EditorStore>()(
         state.decorations = new Map();
 
         // Register plugins
-        const plugins: EnhancedPlugin[] = [
+        const plugins: Plugin[] = [
           new FormatPlugin(),
           new SearchReplacePlugin(),
           new AutosavePlugin(),
@@ -452,7 +452,7 @@ const useEditorStore = create<EditorStore>()(
         state.selection = null;
 
         // Then initialize
-        const plugins: EnhancedPlugin[] = [
+        const plugins: Plugin[] = [
           new FormatPlugin(),
           new SearchReplacePlugin(),
           new AutosavePlugin(),

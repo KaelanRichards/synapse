@@ -1,18 +1,19 @@
-import type { Editor, Selection, FormatType } from '../types';
 import type {
-  EnhancedPlugin,
+  Plugin,
   PluginConfig,
-  PluginLifecycle,
   PluginEventBus,
+  PluginLifecycle,
   Command,
   Decoration,
   PluginHooks,
 } from '../types/plugin';
+import type { Editor, Selection, FormatType } from '../types';
 
-export abstract class BasePlugin<TState extends Record<string, unknown>>
-  implements EnhancedPlugin<TState>
+export abstract class BasePlugin<TState = Record<string, unknown>>
+  implements Plugin<TState>
 {
   public readonly id: string;
+  public readonly name: string;
   public readonly config: PluginConfig;
   public readonly lifecycle?: PluginLifecycle;
   public state!: TState;
@@ -26,6 +27,7 @@ export abstract class BasePlugin<TState extends Record<string, unknown>>
 
   constructor(config: PluginConfig, lifecycle?: PluginLifecycle) {
     this.id = config.id;
+    this.name = config.name;
     this.config = {
       ...config,
       enabled: config.enabled ?? true,

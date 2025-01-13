@@ -1,20 +1,18 @@
 import type { Editor } from '../types';
 import type {
-  PluginManager as IPluginManager,
-  EnhancedPlugin,
-  PluginEventHandler,
+  Plugin,
   PluginEventBus,
+  PluginEventHandler,
 } from '../types/plugin';
 
-class PluginManager implements IPluginManager {
-  plugins: Map<string, EnhancedPlugin>;
+export class PluginManager {
+  private plugins: Map<string, Plugin> = new Map();
   eventBus: PluginEventBus;
   private editor: Editor;
   private eventHandlers: Map<string, Set<PluginEventHandler>>;
 
   constructor(editor: Editor) {
     this.editor = editor;
-    this.plugins = new Map();
     this.eventHandlers = new Map();
     this.eventBus = {
       emit: this.emit.bind(this),
@@ -23,7 +21,7 @@ class PluginManager implements IPluginManager {
     };
   }
 
-  register(plugin: EnhancedPlugin): void {
+  register(plugin: Plugin): void {
     if (this.plugins.has(plugin.config.id)) {
       throw new Error(
         `Plugin with id ${plugin.config.id} is already registered`

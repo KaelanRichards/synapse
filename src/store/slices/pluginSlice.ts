@@ -8,18 +8,19 @@ import type {
   Editor,
   EditorState,
 } from '../../components/editor/types';
-import type { EnhancedPlugin } from '@/components/editor/types/plugin';
+import type { Plugin } from '@/components/editor/types/plugin';
+import type { PluginState, PluginActions } from '../types';
 
 export interface PluginSlice {
   // State
-  plugins: Map<string, EnhancedPlugin>;
+  plugins: Map<string, Plugin>;
   commands: Map<string, Command>;
   decorations: Map<string, Decoration>;
 
   // Plugin actions
-  registerPlugin: (plugin: EnhancedPlugin) => void;
+  registerPlugin: (plugin: Plugin) => void;
   unregisterPlugin: (pluginId: string) => void;
-  getPlugin: (pluginId: string) => EnhancedPlugin | undefined;
+  getPlugin: (pluginId: string) => Plugin | undefined;
 
   // Command actions
   registerCommand: (command: Command) => void;
@@ -82,14 +83,12 @@ export const createPluginSlice: StateCreator<
   PluginSlice
 > = (set, get) => {
   // Use a WeakMap to store plugin states to avoid memory leaks
-  const pluginStates = new WeakMap<EnhancedPlugin, unknown>();
+  const pluginStates = new WeakMap<Plugin, unknown>();
 
-  const runPluginHooks = <T extends keyof NonNullable<EnhancedPlugin['hooks']>>(
+  const runPluginHooks = <T extends keyof NonNullable<Plugin['hooks']>>(
     hookName: T,
-    ...args: Parameters<NonNullable<NonNullable<EnhancedPlugin['hooks']>[T]>>
-  ):
-    | ReturnType<NonNullable<NonNullable<EnhancedPlugin['hooks']>[T]>>
-    | undefined => {
+    ...args: Parameters<NonNullable<NonNullable<Plugin['hooks']>[T]>>
+  ): ReturnType<NonNullable<NonNullable<Plugin['hooks']>[T]>> | undefined => {
     let result: any = args[0];
     const plugins = Array.from(get().plugins.values());
 

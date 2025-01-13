@@ -1,5 +1,6 @@
-import type { EnhancedPlugin } from './types/plugin';
+import type { Plugin, PluginEventBus } from './types/plugin';
 
+export type { Plugin };
 export type SaveStatus = 'saved' | 'saving' | 'unsaved' | 'error';
 
 export interface EditorStats {
@@ -20,25 +21,6 @@ export interface UndoStackItem {
   content: string;
   selection: Selection;
   timestamp: number;
-}
-
-// Plugin System Types
-export interface Plugin {
-  id: string;
-  name: string;
-  state?: any;
-  init?: (editor: Editor) => void | (() => void);
-  destroy?: () => void;
-  commands?: Command[];
-  getCommands?: (editor: Editor) => Command[];
-  setup?: (editor: Editor) => void | (() => void);
-  decorations?: Decoration[];
-  hooks?: {
-    beforeContentChange?: (content: string) => string;
-    afterContentChange?: (content: string) => void;
-    beforeFormat?: (type: FormatType, selection: Selection) => boolean;
-    afterFormat?: (type: FormatType, selection: Selection) => void;
-  };
 }
 
 // Command System Types
@@ -64,14 +46,14 @@ export interface Decoration {
 // Editor Core Types
 export interface Editor {
   id: string;
-  plugins: Map<string, EnhancedPlugin>;
+  plugins: Map<string, Plugin>;
   commands: Map<string, Command>;
   decorations: Map<string, Decoration>;
   cleanupFunctions: Map<string, () => void>;
   state: EditorState;
   dispatch: (action: any) => void;
   subscribe: (listener: () => void) => () => void;
-  registerPlugin: (plugin: EnhancedPlugin) => void;
+  registerPlugin: (plugin: Plugin) => void;
   unregisterPlugin: (pluginId: string) => void;
   registerCommand: (command: Command) => void;
   executeCommand: (commandId: string, ...args: any[]) => void;
@@ -81,6 +63,7 @@ export interface Editor {
   off: (event: string, handler: (...args: any[]) => void) => void;
   update: (updater: () => void) => void;
   getSelectedText: () => Selection | null;
+  eventBus?: PluginEventBus;
 }
 
 export type FormatType =
@@ -114,7 +97,7 @@ export interface AutosavePluginState {
 export interface EditorState {
   content: string;
   selection: Selection | null;
-  plugins: Map<string, EnhancedPlugin>;
+  plugins: Map<string, Plugin>;
   commands: Map<string, Command>;
   decorations: Map<string, Decoration>;
   undoStack: UndoStackItem[];

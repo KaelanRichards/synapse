@@ -9,13 +9,12 @@ import type {
 } from '../components/editor/types';
 
 import { WritableDraft } from 'immer';
-import type { EnhancedPlugin } from '@/components/editor/types/plugin';
 
 // Base state interface that all slices will extend
 export interface BaseState {
   content: string;
   selection: Selection | null;
-  plugins: Map<string, EnhancedPlugin>;
+  plugins: Map<string, Plugin>;
   decorations: Map<string, Decoration>;
   commands: Map<string, Command>;
   cleanupFunctions: Map<string, () => void>;
@@ -116,16 +115,16 @@ export type UISlice = UIState & UIActions;
 
 // Plugin slice
 export type PluginState = WritableDraft<{
-  plugins: Map<string, EnhancedPlugin>;
+  plugins: Map<string, Plugin>;
   commands: Map<string, Command>;
   decorations: Map<string, Decoration>;
   cleanupFunctions: Map<string, () => void>;
 }>;
 
 export interface PluginActions {
-  registerPlugin: (plugin: EnhancedPlugin) => void;
+  registerPlugin: (plugin: Plugin) => void;
   unregisterPlugin: (pluginId: string) => void;
-  getPlugin: (pluginId: string) => EnhancedPlugin | undefined;
+  getPlugin: (pluginId: string) => Plugin | undefined;
   registerCommand: (command: Command) => void;
   unregisterCommand: (commandId: string) => void;
   executeCommand: (commandId: string, ...args: any[]) => void;

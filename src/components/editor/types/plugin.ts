@@ -38,16 +38,8 @@ export interface Plugin<TState = Record<string, unknown>> {
   commands?: Command[];
   decorations?: Decoration[];
   eventBus?: PluginEventBus;
-
-  init?: (editor: Editor, eventBus: PluginEventBus) => void | (() => void);
-  destroy?: () => void;
-  getCommands?: (editor: Editor) => Command[];
-}
-
-// Enhanced Plugin Interface extends base Plugin
-export interface EnhancedPlugin<TState = Record<string, unknown>>
-  extends Plugin<TState> {
   id: string;
+  name: string;
   hooks: {
     [key: string]: (...args: any[]) => void;
   } & PluginHooks;
@@ -56,17 +48,18 @@ export interface EnhancedPlugin<TState = Record<string, unknown>>
   beforeFormat?: (type: FormatType, selection: Selection) => boolean;
   afterFormat?: (type: FormatType, selection: Selection) => void;
   setup?: (editor: Editor, eventBus: PluginEventBus) => void | (() => void);
+  init?: (editor: Editor, eventBus: PluginEventBus) => void | (() => void);
   destroy?: () => void;
   getCommands?: (editor: Editor) => Command[];
 }
 
 // Plugin Manager Interface
 export interface PluginManager {
-  plugins: Map<string, EnhancedPlugin>;
+  plugins: Map<string, Plugin>;
   eventBus: PluginEventBus;
 
   // Plugin lifecycle management
-  register: (plugin: EnhancedPlugin) => void;
+  register: (plugin: Plugin) => void;
   unregister: (pluginId: string) => void;
   enable: (pluginId: string) => void;
   disable: (pluginId: string) => void;
