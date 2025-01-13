@@ -17,6 +17,7 @@ import { AutosavePlugin } from './plugins/AutosavePlugin';
 import { FormatPlugin } from '@/components/editor/plugins/FormatPlugin';
 import { MarkdownPlugin } from '@/components/editor/plugins/MarkdownPlugin';
 import useEditorStore from '@/store/editorStore';
+import { EditorErrorBoundary, ToolbarErrorBoundary } from './ErrorBoundary';
 
 const SAVE_DELAY = 1000;
 
@@ -253,90 +254,119 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
     [setContent]
   );
 
+  const handleEditorError = (error: Error, errorInfo: React.ErrorInfo) => {
+    console.error('Editor Error:', error, errorInfo);
+    // Here you could send the error to your error reporting service
+  };
+
+  const handleToolbarError = (error: Error, errorInfo: React.ErrorInfo) => {
+    console.error('Toolbar Error:', error, errorInfo);
+    // Here you could send the error to your error reporting service
+  };
+
+  const handleEditorReset = () => {
+    // Reset editor state
+    setContent('');
+    setSelection(null);
+    // Re-initialize plugins
+    destroy();
+    initialize();
+    defaultPlugins.forEach(plugin => {
+      useEditorStore.getState().registerPlugin(plugin);
+    });
+  };
+
   return (
-    <div className="relative flex flex-col h-full">
-      <EditorToolbar
-        stats={stats}
-        saveStatus={saveStatus}
-        isLocalFocusMode={isLocalFocusMode}
-        isParagraphFocus={isParagraphFocus}
-        isAmbientSound={isAmbientSound}
-        isTypewriterMode={typewriterMode.enabled}
-        onToggleFocusMode={toggleFocusMode}
-        onToggleParagraphFocus={toggleParagraphFocus}
-        onToggleAmbientSound={toggleAmbientSound}
-        onToggleTypewriterMode={toggleTypewriterMode}
-      />
+    <EditorErrorBoundary
+      onError={handleEditorError}
+      onReset={handleEditorReset}
+    >
+      <div className="relative flex flex-col h-full">
+        <ToolbarErrorBoundary onError={handleToolbarError}>
+          <EditorToolbar
+            stats={stats}
+            saveStatus={saveStatus}
+            isLocalFocusMode={isLocalFocusMode}
+            isParagraphFocus={isParagraphFocus}
+            isAmbientSound={isAmbientSound}
+            isTypewriterMode={typewriterMode.enabled}
+            onToggleFocusMode={toggleFocusMode}
+            onToggleParagraphFocus={toggleParagraphFocus}
+            onToggleAmbientSound={toggleAmbientSound}
+            onToggleTypewriterMode={toggleTypewriterMode}
+          />
+        </ToolbarErrorBoundary>
 
-      <EditorContainer
-        content={content}
-        showToolbar={showToolbar}
-        toolbarPosition={toolbarPosition}
-        commands={commands}
-        isLocalFocusMode={isLocalFocusMode}
-        isParagraphFocus={isParagraphFocus}
-        textareaRef={textareaRef}
-        onContentChange={handleContentChange}
-        onSelectionChange={handleSelectionChange}
-      />
+        <EditorContainer
+          content={content}
+          showToolbar={showToolbar}
+          toolbarPosition={toolbarPosition}
+          commands={commands}
+          isLocalFocusMode={isLocalFocusMode}
+          isParagraphFocus={isParagraphFocus}
+          textareaRef={textareaRef}
+          onContentChange={handleContentChange}
+          onSelectionChange={handleSelectionChange}
+        />
 
-      {searchReplaceState?.isOpen && (
-        <SearchReplaceToolbar
-          isOpen={searchReplaceState.isOpen}
-          searchTerm={searchReplaceState.searchTerm}
-          replaceTerm={searchReplaceState.replaceTerm}
-          matchCount={searchReplaceState.matches.length}
-          currentMatch={searchReplaceState.currentMatch}
-          caseSensitive={searchReplaceState.caseSensitive}
-          useRegex={searchReplaceState.useRegex}
-          onClose={() => textareaRef.current?.focus()}
-          onSearchChange={term => {
-            const command = commands.get('setSearchTerm');
-            if (command) command.execute(term);
-          }}
-          onReplaceChange={term => {
-            const command = commands.get('setReplaceTerm');
-            if (command) command.execute(term);
-          }}
-          onFindNext={() => {
-            const command = commands.get('find-next');
-            if (command) command.execute();
-          }}
-          onFindPrevious={() => {
-            const command = commands.get('find-previous');
-            if (command) command.execute();
-          }}
-          onReplace={() => {
-            const command = commands.get('replace');
-            if (command) command.execute();
-          }}
-          onReplaceAll={() => {
-            const command = commands.get('replace-all');
-            if (command) command.execute();
-          }}
-          onToggleCaseSensitive={() => {
-            const command = commands.get('toggle-case-sensitive');
-            if (command) command.execute();
-          }}
-          onToggleRegex={() => {
-            const command = commands.get('toggle-regex');
-            if (command) command.execute();
-          }}
-        />
-      )}
-      {showKeyboardShortcuts && (
-        <KeyboardShortcutsPanel
-          isOpen={showKeyboardShortcuts}
-          commands={Array.from(commands.values())}
-          onClose={() => setShowKeyboardShortcuts(false)}
-        />
-      )}
-      {isAmbientSound && (
-        <AmbientSoundPlayer
-          isPlaying={isAmbientSound}
-          onClose={toggleAmbientSound}
-        />
-      )}
-    </div>
+        {searchReplaceState?.isOpen && (
+          <SearchReplaceToolbar
+            isOpen={searchReplaceState.isOpen}
+            searchTerm={searchReplaceState.searchTerm}
+            replaceTerm={searchReplaceState.replaceTerm}
+            matchCount={searchReplaceState.matches.length}
+            currentMatch={searchReplaceState.currentMatch}
+            caseSensitive={searchReplaceState.caseSensitive}
+            useRegex={searchReplaceState.useRegex}
+            onClose={() => textareaRef.current?.focus()}
+            onSearchChange={term => {
+              const command = commands.get('setSearchTerm');
+              if (command) command.execute(term);
+            }}
+            onReplaceChange={term => {
+              const command = commands.get('setReplaceTerm');
+              if (command) command.execute(term);
+            }}
+            onFindNext={() => {
+              const command = commands.get('find-next');
+              if (command) command.execute();
+            }}
+            onFindPrevious={() => {
+              const command = commands.get('find-previous');
+              if (command) command.execute();
+            }}
+            onReplace={() => {
+              const command = commands.get('replace');
+              if (command) command.execute();
+            }}
+            onReplaceAll={() => {
+              const command = commands.get('replace-all');
+              if (command) command.execute();
+            }}
+            onToggleCaseSensitive={() => {
+              const command = commands.get('toggle-case-sensitive');
+              if (command) command.execute();
+            }}
+            onToggleRegex={() => {
+              const command = commands.get('toggle-regex');
+              if (command) command.execute();
+            }}
+          />
+        )}
+        {showKeyboardShortcuts && (
+          <KeyboardShortcutsPanel
+            isOpen={showKeyboardShortcuts}
+            commands={Array.from(commands.values())}
+            onClose={() => setShowKeyboardShortcuts(false)}
+          />
+        )}
+        {isAmbientSound && (
+          <AmbientSoundPlayer
+            isPlaying={isAmbientSound}
+            onClose={toggleAmbientSound}
+          />
+        )}
+      </div>
+    </EditorErrorBoundary>
   );
 };
