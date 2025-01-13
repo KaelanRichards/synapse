@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Textarea } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { useVirtualScroll } from '@/hooks/useVirtualScroll';
@@ -25,6 +25,72 @@ export const VirtualTextarea: React.FC<VirtualTextareaProps> = ({
 }) => {
   const { parentRef, totalSize } = useVirtualScroll(content);
   const { handleSmartSelect } = useTextSelection();
+
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const handleSearch = (e: Event) => {
+      const { searchTerm } = (e as CustomEvent).detail;
+      textarea.dispatchEvent(
+        new CustomEvent('editor:search', { detail: { searchTerm } })
+      );
+    };
+
+    const handleReplace = (e: Event) => {
+      const { replaceTerm } = (e as CustomEvent).detail;
+      textarea.dispatchEvent(
+        new CustomEvent('editor:replace', { detail: { replaceTerm } })
+      );
+    };
+
+    const handleFindNext = () => {
+      textarea.dispatchEvent(new CustomEvent('editor:findNext'));
+    };
+
+    const handleFindPrevious = () => {
+      textarea.dispatchEvent(new CustomEvent('editor:findPrevious'));
+    };
+
+    const handleReplaceOne = () => {
+      textarea.dispatchEvent(new CustomEvent('editor:replace'));
+    };
+
+    const handleReplaceAll = () => {
+      textarea.dispatchEvent(new CustomEvent('editor:replaceAll'));
+    };
+
+    const handleToggleCaseSensitive = () => {
+      textarea.dispatchEvent(new CustomEvent('editor:toggleCaseSensitive'));
+    };
+
+    const handleToggleRegex = () => {
+      textarea.dispatchEvent(new CustomEvent('editor:toggleRegex'));
+    };
+
+    textarea.addEventListener('search', handleSearch);
+    textarea.addEventListener('replace', handleReplace);
+    textarea.addEventListener('findNext', handleFindNext);
+    textarea.addEventListener('findPrevious', handleFindPrevious);
+    textarea.addEventListener('replace', handleReplaceOne);
+    textarea.addEventListener('replaceAll', handleReplaceAll);
+    textarea.addEventListener('toggleCaseSensitive', handleToggleCaseSensitive);
+    textarea.addEventListener('toggleRegex', handleToggleRegex);
+
+    return () => {
+      textarea.removeEventListener('search', handleSearch);
+      textarea.removeEventListener('replace', handleReplace);
+      textarea.removeEventListener('findNext', handleFindNext);
+      textarea.removeEventListener('findPrevious', handleFindPrevious);
+      textarea.removeEventListener('replace', handleReplaceOne);
+      textarea.removeEventListener('replaceAll', handleReplaceAll);
+      textarea.removeEventListener(
+        'toggleCaseSensitive',
+        handleToggleCaseSensitive
+      );
+      textarea.removeEventListener('toggleRegex', handleToggleRegex);
+    };
+  }, [textareaRef]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (textareaRef.current) {

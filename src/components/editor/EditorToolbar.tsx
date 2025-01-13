@@ -21,6 +21,11 @@ interface EditorToolbarProps {
   isLocalFocusMode: boolean;
   isAmbientSound: boolean;
   isTypewriterMode: boolean;
+  autosaveState?: {
+    saveStatus: 'saved' | 'saving' | 'unsaved' | 'error';
+    errorMessage?: string;
+    lastSaveTime?: number;
+  };
   onToggleFocusMode: () => void;
   onToggleAmbientSound: () => void;
   onToggleTypewriterMode: () => void;
@@ -33,8 +38,21 @@ const formatTime = (seconds: number): string => {
   return `${minutes} minutes`;
 };
 
+const formatLastSaved = (timestamp?: number): string => {
+  if (!timestamp) return '';
+  const seconds = Math.floor((Date.now() - timestamp) / 1000);
+  if (seconds < 5) return 'Just now';
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes === 1) return '1m ago';
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours === 1) return '1h ago';
+  return `${hours}h ago`;
+};
+
 const getStatusVariant = (
-  status: SaveStatus
+  status: SaveStatus | 'error'
 ): 'success' | 'warning' | 'error' => {
   switch (status) {
     case 'saved':
@@ -42,6 +60,7 @@ const getStatusVariant = (
     case 'saving':
       return 'warning';
     case 'unsaved':
+    case 'error':
       return 'error';
   }
 };
@@ -52,23 +71,35 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
   isLocalFocusMode,
   isAmbientSound,
   isTypewriterMode,
+  autosaveState,
   onToggleFocusMode,
   onToggleAmbientSound,
   onToggleTypewriterMode,
 }) => {
+  const status = autosaveState?.saveStatus || saveStatus;
+  const lastSaved = autosaveState?.lastSaveTime
+    ? formatLastSaved(autosaveState.lastSaveTime)
+    : '';
+
   return (
     <div className="sticky top-0 z-10 flex items-center justify-between p-2 bg-white/80 dark:bg-black/80 backdrop-blur">
       <div className="flex items-center space-x-2">
-        <Badge variant={getStatusVariant(saveStatus)}>
-          {saveStatus === 'saved' && <CheckIcon className="w-4 h-4" />}
-          {saveStatus === 'saving' && (
+        <Badge variant={getStatusVariant(status)}>
+          {status === 'saved' && <CheckIcon className="w-4 h-4" />}
+          {status === 'saving' && (
             <CloudArrowUpIcon className="w-4 h-4 animate-spin" />
           )}
-          {saveStatus === 'unsaved' && (
+          {(status === 'unsaved' || status === 'error') && (
             <ExclamationCircleIcon className="w-4 h-4" />
           )}
-          {saveStatus}
+          {status}
+          {lastSaved && status === 'saved' && ` • ${lastSaved}`}
         </Badge>
+        {autosaveState?.errorMessage && (
+          <Badge variant="error" className="animate-pulse">
+            {autosaveState.errorMessage}
+          </Badge>
+        )}
         <Badge variant="secondary">{stats.wordCount} words</Badge>
         <Badge variant="secondary">{formatTime(stats.timeSpent)}</Badge>
         <Badge variant="secondary">~{stats.readingTime} min read</Badge>
