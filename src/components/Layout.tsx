@@ -22,9 +22,17 @@ interface LayoutProps {
   children: React.ReactNode;
 }
 
+const authPages = [
+  '/signin',
+  '/signup',
+  '/reset-password',
+  '/reset-password/confirm',
+];
+
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { session, signOut } = useAuth();
   const router = useRouter();
+  const isAuthPage = authPages.includes(router.pathname);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = useState(false);
   const [isFocusMode, setIsFocusMode] = useState(false);
@@ -46,8 +54,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     return () => window.removeEventListener('keydown', handleEscape);
   }, [isFocusMode]);
 
-  if (!session) {
-    return <>{children}</>;
+  if (isAuthPage) {
+    return (
+      <div className="flex h-screen overflow-hidden bg-surface-pure dark:bg-surface-dark">
+        <main className="flex-1 overflow-y-auto">{children}</main>
+      </div>
+    );
   }
 
   return (
