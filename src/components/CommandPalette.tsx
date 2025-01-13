@@ -18,13 +18,7 @@ export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const { notes } = useNoteList();
-  const {
-    typewriterMode,
-    setTheme,
-    setFontFamily,
-    setFontSize,
-    setTypewriterMode,
-  } = useUIStore();
+  const { setTheme, setFontFamily, setFontSize } = useUIStore();
 
   // Toggle the menu when ⌘K is pressed
   useEffect(() => {
@@ -60,18 +54,6 @@ export function CommandPalette() {
         />
 
         <Command.List className="mt-4 rounded-lg border border-ink-faint/20 bg-surface-pure dark:bg-surface-dark overflow-hidden">
-          <Command.Group heading="Quick Actions">
-            <Command.Item
-              onSelect={() => {
-                setTypewriterMode({ enabled: !typewriterMode.enabled });
-                setOpen(false);
-              }}
-              className="px-4 py-2 hover:bg-surface-faint dark:hover:bg-surface-dim/10 cursor-pointer"
-            >
-              Toggle Typewriter Mode
-            </Command.Item>
-          </Command.Group>
-
           <Command.Group heading="Theme">
             <Command.Item
               onSelect={() => {

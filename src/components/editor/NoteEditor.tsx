@@ -5,20 +5,12 @@ import { useRouter } from 'next/router';
 import { EditorToolbar } from './EditorToolbar';
 import { EditorContainer } from './EditorContainer';
 import AmbientSoundPlayer from '../AmbientSoundPlayer';
-import type {
-  Plugin,
-  Selection,
-  NoteEditorProps,
-  Command,
-  Decoration,
-  UndoStackItem,
-} from './types';
+import type { Selection, NoteEditorProps } from './types';
 import { KeyboardShortcutsPanel } from './KeyboardShortcutsPanel';
 import { AutosavePlugin } from './plugins/AutosavePlugin';
 import { FormatPlugin } from '@/components/editor/plugins/FormatPlugin';
 import { MarkdownPlugin } from './plugins/MarkdownPlugin';
 import useEditorStore from '@/store/editorStore';
-import { FloatingFormatToolbar } from './FloatingFormatToolbar';
 import { EditorErrorBoundary, ToolbarErrorBoundary } from './ErrorBoundary';
 
 const SAVE_DELAY = 1000;
@@ -33,24 +25,18 @@ const defaultPlugins = [
 export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { updateNote } = useNoteMutations();
-  const supabase = useSupabase();
-  const router = useRouter();
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
 
   // Get editor state and actions from Zustand store
   const {
     content,
-    selection,
-    plugins,
     commands,
-    decorations,
     stats,
     saveStatus,
     isLocalFocusMode,
     isParagraphFocus,
     isAmbientSound,
     showToolbar,
-    focusMode,
     typewriterMode,
     toolbarPosition,
     setContent,
@@ -65,7 +51,6 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
     destroy,
     undo,
     redo,
-    handleKeyDown,
   } = useEditorStore();
 
   // Initialize editor with plugins

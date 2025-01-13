@@ -13,58 +13,21 @@ import type { SaveStatus, EditorStats } from './types';
 export interface EditorToolbarProps {
   stats: EditorStats;
   saveStatus: SaveStatus;
-  isLocalFocusMode: boolean;
-  isParagraphFocus: boolean;
   isAmbientSound: boolean;
-  isTypewriterMode: boolean;
-  onToggleFocusMode: () => void;
-  onToggleParagraphFocus: () => void;
   onToggleAmbientSound: () => void;
-  onToggleTypewriterMode: () => void;
 }
 
 export const EditorToolbar: React.FC<EditorToolbarProps> = ({
   stats,
   saveStatus,
-  isParagraphFocus,
   isAmbientSound,
-  isTypewriterMode,
-  onToggleParagraphFocus,
   onToggleAmbientSound,
-  onToggleTypewriterMode,
 }) => {
   return (
     <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 px-4 py-2">
       {/* Left side - Writing modes */}
       <div className="flex items-center space-x-2">
-        <div className="flex items-center space-x-1 border-r border-neutral-200 dark:border-neutral-800 pr-2">
-          <Tooltip content="Paragraph Focus (⌘P)">
-            <button
-              onClick={onToggleParagraphFocus}
-              className={`p-1.5 rounded-md transition-colors ${
-                isParagraphFocus
-                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                  : 'hover:bg-neutral-100 dark:hover:bg-neutral-800'
-              }`}
-            >
-              <DocumentDuplicateIcon className="w-4 h-4" />
-            </button>
-          </Tooltip>
-        </div>
-
         <div className="flex items-center space-x-1">
-          <Tooltip content="Typewriter Mode (⌘T)">
-            <button
-              onClick={onToggleTypewriterMode}
-              className={`p-1.5 rounded-md transition-colors ${
-                isTypewriterMode
-                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                  : 'hover:bg-neutral-100 dark:hover:bg-neutral-800'
-              }`}
-            >
-              <PencilIcon className="w-4 h-4" />
-            </button>
-          </Tooltip>
           <Tooltip content="Ambient Sound">
             <button
               onClick={onToggleAmbientSound}
