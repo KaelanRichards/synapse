@@ -4,6 +4,7 @@ import { NoteServiceError } from '@/features/notes/services/noteService';
 interface Props {
   children: React.ReactNode;
   fallback?: React.ReactNode;
+  onReset?: () => void;
 }
 
 interface State {
@@ -24,11 +25,6 @@ export class ErrorBoundary extends React.Component<Props, State> {
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('Error caught by boundary:', error);
     console.error('Component stack:', errorInfo.componentStack);
-
-    // Here you could send to your error tracking service
-    // if (process.env.NODE_ENV === 'production') {
-    //   captureException(error, { extra: errorInfo });
-    // }
   }
 
   private getErrorMessage(error: Error): string {
@@ -56,27 +52,25 @@ export class ErrorBoundary extends React.Component<Props, State> {
       if (this.props.fallback) {
         return this.props.fallback;
       }
-
       return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-          <div className="max-w-md w-full space-y-8">
-            <div>
-              <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-                Oops! Something went wrong
-              </h2>
-              <p className="mt-2 text-center text-sm text-gray-600">
-                {this.state.error && this.getErrorMessage(this.state.error)}
-              </p>
-            </div>
-            <div className="mt-8 space-y-6">
-              <button
-                onClick={() => window.location.reload()}
-                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-              >
-                Try Again
-              </button>
-            </div>
-          </div>
+        <div className="flex flex-col items-center justify-center p-4">
+          <h3 className="text-lg font-medium mb-2">Something went wrong</h3>
+          <p className="text-sm text-gray-600 mb-4">
+            {this.state.error
+              ? this.getErrorMessage(this.state.error)
+              : 'Unknown error'}
+          </p>
+          {this.props.onReset && (
+            <button
+              onClick={() => {
+                this.setState({ hasError: false, error: null });
+                this.props.onReset?.();
+              }}
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+            >
+              Try again
+            </button>
+          )}
         </div>
       );
     }
