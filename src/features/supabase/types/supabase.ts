@@ -1,4 +1,3 @@
-import { ConnectionType } from '@/features/notes/types/schema';
 import { NoteContent } from '@/features/notes/types/schema';
 import { SerializedEditorState, SerializedLexicalNode } from 'lexical';
 
@@ -19,18 +18,6 @@ export interface DatabaseNoteVersion {
   note_id: string;
   version_number: number;
   content: NoteContent;
-  created_at: string;
-}
-
-export interface DatabaseConnection {
-  id: string;
-  note_from: string;
-  note_to: string;
-  connection_type: ConnectionType;
-  strength: number;
-  bidirectional: boolean;
-  context?: string;
-  emergent: boolean;
   created_at: string;
 }
 
@@ -61,11 +48,6 @@ export interface Database {
         Insert: Omit<DatabaseNoteVersion, 'id' | 'created_at'>;
         Update: never; // Versions should never be updated
       };
-      connections: {
-        Row: DatabaseConnection;
-        Insert: Omit<DatabaseConnection, 'id' | 'created_at'>;
-        Update: Partial<Omit<DatabaseConnection, 'id' | 'created_at'>>;
-      };
       tags: {
         Row: DatabaseTag;
         Insert: Omit<DatabaseTag, 'id' | 'created_at'>;
@@ -82,9 +64,6 @@ export interface Database {
     };
     Functions: {
       [_ in never]: never;
-    };
-    Enums: {
-      connection_type: ConnectionType;
     };
   };
 }

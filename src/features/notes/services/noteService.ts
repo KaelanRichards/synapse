@@ -1,12 +1,10 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import {
   BaseNote,
-  NoteWithConnections,
   CreateNoteInput,
   UpdateNoteInput,
   CreateNoteInputSchema,
   UpdateNoteInputSchema,
-  NoteWithConnectionsSchema,
 } from '../types/schema';
 
 export class NoteServiceError extends Error {
@@ -24,32 +22,18 @@ export class NoteService {
   constructor(private supabase: SupabaseClient) {}
 
   private handleError(error: unknown, message: string): never {
-    console.error('Note service error:', error);
     if (error instanceof Error) {
-      throw new NoteServiceError(message, 'OPERATION_FAILED', error);
+      throw new NoteServiceError(message, 'UNKNOWN_ERROR', error);
     }
-    throw new NoteServiceError(message, 'UNKNOWN_ERROR', error);
+    throw new NoteServiceError(message, 'UNKNOWN_ERROR');
   }
 
   async createNote(input: CreateNoteInput): Promise<BaseNote> {
     try {
-      // Validate input
       const validatedInput = CreateNoteInputSchema.parse(input);
-
-      const { data: user } = await this.supabase.auth.getUser();
-      if (!user.user) {
-        throw new NoteServiceError('User not authenticated', 'UNAUTHORIZED');
-      }
-
       const { data, error } = await this.supabase
         .from('notes')
-        .insert([
-          {
-            user_id: user.user.id,
-            ...validatedInput,
-            display_order: validatedInput.display_order || Date.now(),
-          },
-        ])
+        .insert([validatedInput])
         .select()
         .single();
 
@@ -57,30 +41,27 @@ export class NoteService {
         throw error;
       }
 
-      return data as BaseNote;
+      return data;
     } catch (error) {
       this.handleError(error, 'Failed to create note');
     }
   }
 
-  async updateNote(input: UpdateNoteInput): Promise<void> {
+  async updateNote(input: UpdateNoteInput): Promise<BaseNote> {
     try {
-      // Validate input
       const validatedInput = UpdateNoteInputSchema.parse(input);
-
-      const { error } = await this.supabase
+      const { data, error } = await this.supabase
         .from('notes')
-        .update({
-          title: validatedInput.title,
-          content: validatedInput.content,
-          is_pinned: validatedInput.is_pinned,
-          display_order: validatedInput.display_order,
-        })
-        .eq('id', validatedInput.id);
+        .update(validatedInput)
+        .eq('id', input.id)
+        .select()
+        .single();
 
       if (error) {
         throw error;
       }
+
+      return data;
     } catch (error) {
       this.handleError(error, 'Failed to update note');
     }
@@ -101,36 +82,21 @@ export class NoteService {
     }
   }
 
-  async getNoteWithConnections(noteId: string): Promise<NoteWithConnections> {
+  async getNote(noteId: string): Promise<BaseNote> {
     try {
-      const { data: note, error: noteError } = await this.supabase
+      const { data, error } = await this.supabase
         .from('notes')
         .select('*')
         .eq('id', noteId)
         .single();
 
-      if (noteError) {
-        throw noteError;
+      if (error) {
+        throw error;
       }
 
-      const { data: connections, error: connectionsError } = await this.supabase
-        .from('connections')
-        .select('*')
-        .eq('note_from', noteId);
-
-      if (connectionsError) {
-        throw connectionsError;
-      }
-
-      const noteWithConnections = {
-        ...note,
-        connections: connections || [],
-      };
-
-      // Validate response
-      return NoteWithConnectionsSchema.parse(noteWithConnections);
+      return data;
     } catch (error) {
-      this.handleError(error, 'Failed to fetch note with connections');
+      this.handleError(error, 'Failed to fetch note');
     }
   }
 

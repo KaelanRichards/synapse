@@ -1,17 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/features/supabase/lib/supabase';
-import { Note, Connection } from '../types/note';
-
-interface NoteWithConnections extends Note {
-  connections: Connection[];
-}
+import { Note } from '../types/note';
 
 export function useNote(noteId: string | undefined) {
   const {
     data: note,
     isLoading,
     error,
-  } = useQuery<NoteWithConnections>({
+  } = useQuery<Note>({
     queryKey: ['note', noteId],
     queryFn: async () => {
       if (!noteId) throw new Error('Note ID is required');
@@ -24,14 +20,7 @@ export function useNote(noteId: string | undefined) {
 
       if (noteError) throw noteError;
 
-      const { data: connections, error: connError } = await supabase
-        .from('connections')
-        .select('*')
-        .eq('note_from', noteId);
-
-      if (connError) throw connError;
-
-      return { ...note, connections: connections || [] };
+      return note;
     },
     enabled: !!noteId,
   });

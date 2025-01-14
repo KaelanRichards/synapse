@@ -21,15 +21,3 @@ export interface Note {
   updated_at: string;
   user_id: string;
 }
-
-export interface Connection {
-  id: string;
-  note_from: string;
-  note_to: string;
-  connection_type: 'related' | 'prerequisite' | 'refines';
-  strength: number;
-  bidirectional: boolean;
-  context?: string;
-  emergent: boolean;
-  created_at: string;
-}
