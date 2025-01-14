@@ -16,7 +16,6 @@ export interface Note {
 id: string;
 title: string;
 content: string;
-maturity_state: 'SEED' | 'SAPLING' | 'GROWTH' | 'MATURE' | 'EVOLVING';
 connections: Connection[];
 history: VersionHistory[];
 context: string[];
@@ -71,7 +70,6 @@ CREATE TABLE notes (
 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 title TEXT NOT NULL,
 content TEXT NOT NULL,
-maturity_state TEXT CHECK (maturity_state IN ('SEED', 'SAPLING', 'GROWTH', 'MATURE', 'EVOLVING')) DEFAULT 'SEED',
 created_at TIMESTAMPTZ DEFAULT NOW(),
 updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -170,7 +168,7 @@ const { title, content } = req.body;
     // Insert note
     const { data, error } = await supabase
       .from('notes')
-      .insert([{ title, content, maturity_state: 'SEED' }])
+      .insert([{ title, content }])
       .select()
       .single();
 

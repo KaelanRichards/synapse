@@ -110,27 +110,6 @@
   .note-content {
     @apply max-w-prose mx-auto px-4;
   }
-
-  /* Maturity state styles */
-  .note-state-seed {
-    @apply bg-accent-primary/5 border-accent-primary/10;
-  }
-
-  .note-state-sapling {
-    @apply bg-accent-success/5 border-accent-success/10;
-  }
-
-  .note-state-growth {
-    @apply bg-accent-warning/5 border-accent-warning/10;
-  }
-
-  .note-state-mature {
-    @apply bg-accent-primary/10 border-accent-primary/20;
-  }
-
-  .note-state-evolving {
-    @apply bg-accent-error/5 border-accent-error/10;
-  }
 }
 
 @layer utilities {

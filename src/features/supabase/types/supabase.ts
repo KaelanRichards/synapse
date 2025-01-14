@@ -1,8 +1,6 @@
-import {
-  ConnectionType,
-  NoteContent,
-  NoteMaturityState,
-} from '@/features/notes/types/notes';
+import { ConnectionType } from '@/features/notes/types/schema';
+import { NoteContent } from '@/features/notes/types/schema';
+import { SerializedEditorState, SerializedLexicalNode } from 'lexical';
 
 // Database-specific types
 export interface DatabaseNote {
@@ -10,7 +8,6 @@ export interface DatabaseNote {
   user_id: string;
   title: string;
   content: NoteContent;
-  maturity_state: NoteMaturityState;
   is_pinned: boolean;
   display_order: number;
   created_at: string;
@@ -87,8 +84,39 @@ export interface Database {
       [_ in never]: never;
     };
     Enums: {
-      note_maturity_state: NoteMaturityState;
       connection_type: ConnectionType;
     };
   };
+}
+
+export interface Note {
+  id: string;
+  title: string;
+  content: {
+    text: string;
+    editorState: {
+      type: string;
+      content: SerializedEditorState<SerializedLexicalNode>;
+      selection?: {
+        anchor: number;
+        focus: number;
+        type: string;
+      };
+    };
+  };
+  is_pinned: boolean;
+  display_order?: number;
+  created_at: string;
+  updated_at: string;
+  user_id: string;
+}
+
+export interface UserSettings {
+  id: string;
+  user_id: string;
+  theme: string;
+  font_size: number;
+  line_spacing: number;
+  created_at: string;
+  updated_at: string;
 }

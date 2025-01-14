@@ -89,7 +89,6 @@ See `supabase/migrations` for the complete schema definition.
 - Note versioning
 - Bidirectional note connections
 - Tag-based organization
-- Maturity states for knowledge evolution
 - Real-time collaboration
 - GitHub authentication
 

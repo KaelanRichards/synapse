@@ -73,7 +73,6 @@ export class NoteService {
         .update({
           title: validatedInput.title,
           content: validatedInput.content,
-          maturity_state: validatedInput.maturity_state,
           is_pinned: validatedInput.is_pinned,
           display_order: validatedInput.display_order,
         })

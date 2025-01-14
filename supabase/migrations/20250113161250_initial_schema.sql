@@ -2,15 +2,6 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pg_trgm";  -- For text search
 
--- Create enum types for note maturity states
-CREATE TYPE note_maturity_state AS ENUM (
-  'SEED',
-  'SAPLING',
-  'GROWTH',
-  'MATURE',
-  'EVOLVING'
-);
-
 -- Create enum types for connection types
 CREATE TYPE connection_type AS ENUM (
   'related',
@@ -24,7 +15,6 @@ CREATE TABLE notes (
   user_id UUID NOT NULL,
   title TEXT NOT NULL CHECK (char_length(title) > 0),
   content JSONB NOT NULL,
-  maturity_state note_maturity_state NOT NULL DEFAULT 'SEED',
   is_pinned BOOLEAN NOT NULL DEFAULT false,
   display_order INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -36,7 +26,6 @@ CREATE TABLE notes (
 CREATE INDEX idx_notes_title_trgm ON notes USING GIN (title gin_trgm_ops);
 CREATE INDEX idx_notes_content ON notes USING GIN (content);
 CREATE INDEX idx_notes_display_order ON notes (display_order);
-CREATE INDEX idx_notes_maturity_state ON notes (maturity_state);
 CREATE INDEX idx_notes_created_at ON notes (created_at DESC);
 CREATE INDEX idx_notes_user_id ON notes (user_id);
 
@@ -101,7 +90,6 @@ CREATE TABLE user_settings (
   theme TEXT NOT NULL DEFAULT 'system',
   font_size INTEGER NOT NULL DEFAULT 16,
   line_spacing FLOAT NOT NULL DEFAULT 1.5,
-  default_maturity_state note_maturity_state NOT NULL DEFAULT 'SEED',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

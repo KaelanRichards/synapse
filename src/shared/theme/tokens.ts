@@ -24,29 +24,6 @@ export const colors = {
   },
 } as const;
 
-export const maturityStateColors = {
-  SEED: {
-    bg: 'rgba(59, 130, 246, 0.05)',
-    border: 'rgba(59, 130, 246, 0.1)',
-  },
-  SAPLING: {
-    bg: 'rgba(16, 185, 129, 0.05)',
-    border: 'rgba(16, 185, 129, 0.1)',
-  },
-  GROWTH: {
-    bg: 'rgba(245, 158, 11, 0.05)',
-    border: 'rgba(245, 158, 11, 0.1)',
-  },
-  MATURE: {
-    bg: 'rgba(99, 102, 241, 0.05)',
-    border: 'rgba(99, 102, 241, 0.1)',
-  },
-  EVOLVING: {
-    bg: 'rgba(236, 72, 153, 0.05)',
-    border: 'rgba(236, 72, 153, 0.1)',
-  },
-} as const;
-
 export const spacing = {
   '2xs': '0.25rem',
   xs: '0.5rem',

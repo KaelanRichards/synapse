@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { SerializedEditorState } from 'lexical';
 
 // Editor State Schema
 export const EditorStateSchema = z.object({
@@ -19,15 +20,6 @@ export const NoteContentSchema = z.object({
   editorState: EditorStateSchema,
 });
 
-// Maturity State Schema
-export const NoteMaturityStateSchema = z.enum([
-  'SEED',
-  'SAPLING',
-  'GROWTH',
-  'MATURE',
-  'EVOLVING',
-]);
-
 // Connection Type Schema
 export const ConnectionTypeSchema = z.enum([
   'related',
@@ -40,7 +32,6 @@ export const BaseNoteSchema = z.object({
   id: z.string().uuid(),
   title: z.string().min(1, 'Title is required'),
   content: NoteContentSchema,
-  maturity_state: NoteMaturityStateSchema,
   is_pinned: z.boolean().default(false),
   display_order: z.number().optional(),
   created_at: z.string().datetime(),
@@ -70,7 +61,6 @@ export const NoteWithConnectionsSchema = BaseNoteSchema.extend({
 export const CreateNoteInputSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   content: NoteContentSchema,
-  maturity_state: NoteMaturityStateSchema.optional().default('SEED'),
   is_pinned: z.boolean().optional().default(false),
   display_order: z.number().optional(),
 });
@@ -80,7 +70,6 @@ export const UpdateNoteInputSchema = z.object({
   id: z.string().uuid(),
   title: z.string().min(1, 'Title is required').optional(),
   content: NoteContentSchema.optional(),
-  maturity_state: NoteMaturityStateSchema.optional(),
   is_pinned: z.boolean().optional(),
   display_order: z.number().optional(),
 });
@@ -88,10 +77,33 @@ export const UpdateNoteInputSchema = z.object({
 // Export inferred types
 export type EditorState = z.infer<typeof EditorStateSchema>;
 export type NoteContent = z.infer<typeof NoteContentSchema>;
-export type NoteMaturityState = z.infer<typeof NoteMaturityStateSchema>;
 export type ConnectionType = z.infer<typeof ConnectionTypeSchema>;
 export type BaseNote = z.infer<typeof BaseNoteSchema>;
 export type Connection = z.infer<typeof ConnectionSchema>;
 export type NoteWithConnections = z.infer<typeof NoteWithConnectionsSchema>;
 export type CreateNoteInput = z.infer<typeof CreateNoteInputSchema>;
 export type UpdateNoteInput = z.infer<typeof UpdateNoteInputSchema>;
+
+export const NoteSchema = z.object({
+  id: z.string().uuid(),
+  title: z.string().min(1),
+  content: z.object({
+    text: z.string(),
+    editorState: z.object({
+      type: z.string(),
+      content: z.any() as z.ZodType<SerializedEditorState>,
+      selection: z
+        .object({
+          anchor: z.number(),
+          focus: z.number(),
+          type: z.string(),
+        })
+        .optional(),
+    }),
+  }),
+  is_pinned: z.boolean(),
+  display_order: z.number().optional(),
+  created_at: z.string(),
+  updated_at: z.string(),
+  user_id: z.string().uuid(),
+});

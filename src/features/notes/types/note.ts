@@ -15,7 +15,6 @@ export interface Note {
       };
     };
   };
-  maturity_state: 'SEED' | 'SAPLING' | 'GROWTH' | 'MATURE' | 'EVOLVING';
   is_pinned: boolean;
   display_order?: number;
   created_at: string;

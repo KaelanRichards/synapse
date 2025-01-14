@@ -35,7 +35,7 @@ export function CommandPalette() {
             content: createEditor().getEditorState().toJSON(),
           },
         },
-        maturity_state: 'SEED',
+        is_pinned: false,
       });
       router.push(`/notes/${note.id}/edit`);
       setOpen(false);

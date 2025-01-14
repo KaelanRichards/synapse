@@ -52,7 +52,6 @@ export default async function handler(
           {
             title,
             content,
-            maturity_state: 'SEED',
             user_id: user.id,
             is_pinned: false,
             display_order: 0,
