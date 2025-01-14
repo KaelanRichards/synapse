@@ -1,13 +1,13 @@
 import React from 'react';
 import { useRouter } from 'next/router';
-import { useNote } from '@/hooks/useNote';
+import { useNote } from '@/features/notes/hooks/useNote';
 import { NextPage } from 'next';
-import { NoteEditor } from '@/components/editor/NoteEditor';
+import { NoteEditor } from '@/features/editor/components/NoteEditor';
 
 const NoteDetail: NextPage = () => {
   const router = useRouter();
   const { id } = router.query;
-  const { data: note, isLoading, error } = useNote(id as string);
+  const { note, isLoading, error } = useNote(id as string);
 
   if (isLoading) {
     return <div className="p-4">Loading note...</div>;
@@ -28,17 +28,7 @@ const NoteDetail: NextPage = () => {
     return <div className="p-4">Note not found</div>;
   }
 
-  const editorNote = {
-    id: note.id,
-    content: {
-      text: note.content.text || '',
-      editorState: note.content.editorState,
-    },
-    is_pinned: note.is_pinned,
-    display_order: note.display_order,
-  };
-
-  return <NoteEditor initialNote={editorNote} />;
+  return <NoteEditor noteId={note.id} />;
 };
 
 export default NoteDetail;

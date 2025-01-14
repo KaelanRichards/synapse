@@ -3,7 +3,7 @@ import { z } from 'zod';
 // Editor State Schema
 export const EditorStateSchema = z.object({
   type: z.string(),
-  content: z.record(z.unknown()),
+  content: z.any(),
   selection: z
     .object({
       anchor: z.number(),

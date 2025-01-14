@@ -1,14 +1,9 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useSupabase } from '@/contexts/SupabaseContext';
+import { useSupabase } from '@/features/supabase/contexts/SupabaseContext';
 import { NoteService } from '../services/noteService';
 import { useApiQuery } from '@/shared/hooks/useApiQuery';
 import { useApiMutation } from '@/shared/hooks/useApiMutation';
-import type {
-  BaseNote,
-  NoteWithConnections,
-  CreateNoteInput,
-  UpdateNoteInput,
-} from '../types/schema';
+import type { CreateNoteInput, UpdateNoteInput } from '../types/schema';
 
 export function useNotes() {
   const supabase = useSupabase();

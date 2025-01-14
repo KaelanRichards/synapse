@@ -1,12 +1,11 @@
 import type { AppProps } from 'next/app';
-import { SupabaseProvider } from '@/contexts/SupabaseContext';
-import { AuthProvider } from '@/contexts/AuthContext';
+import { AuthProvider, ProtectedRoute } from '@/features/auth';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import Layout from '@/components/Layout';
-import ProtectedRoute from '@/components/ProtectedRoute';
-import CommandPaletteProvider from '@/components/CommandPaletteProvider';
-import { ToastProvider } from '@/components/ui/ToastProvider';
+import Layout from '@/features/layout/components/Layout';
+import { CommandPaletteProvider } from '@/features/command-palette';
+import { ToastProviderPrimitive as ToastProvider } from '@/features/toast/components/Toast';
 import '@/styles/globals.css';
+import { SupabaseProvider } from '@/features/supabase/contexts/SupabaseContext';
 
 const queryClient = new QueryClient({
   defaultOptions: {
