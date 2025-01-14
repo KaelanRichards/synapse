@@ -1,12 +1,6 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
-import {
-  $getRoot,
-  $getSelection,
-  $isRangeSelection,
-  SELECTION_CHANGE_COMMAND,
-  RangeSelection,
-} from 'lexical';
+import { $getRoot } from 'lexical';
 import { useNoteMutations } from '@/features/notes/hooks/useNoteMutations';
 import { useEditorStore } from '../store/editorStore';
 
@@ -18,10 +12,19 @@ interface AutosavePluginProps {
   onSaveError?: (error: Error) => void;
 }
 
-const SAVE_DEBOUNCE = 500;
+interface SaveOperation {
+  content: string;
+  textContent: string;
+  timestamp: number;
+  attempt: number;
+  id: string; // Unique identifier for each save operation
+}
+
+const SAVE_DEBOUNCE = 1000;
 const MIN_SAVE_INTERVAL = 2000;
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000;
+const MAX_QUEUE_SIZE = 5;
 
 export function AutosavePlugin({
   noteId,
@@ -34,144 +37,216 @@ export function AutosavePlugin({
   const { updateNote } = useNoteMutations();
   const { setSaving, setError, setHasUnsavedChanges, setLastSavedAt } =
     useEditorStore();
+
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const lastSaveAttemptRef = useRef<number>(0);
-  const retryCountRef = useRef<number>(0);
+  const processingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isSavingRef = useRef<boolean>(false);
+  const isDirtyRef = useRef<boolean>(false);
+  const lastSavedContentRef = useRef<string>('');
+  const isUnmountingRef = useRef<boolean>(false);
+  const saveQueueRef = useRef<SaveOperation[]>([]);
+  const lastSuccessfulSaveRef = useRef<number>(0);
 
-  const saveContent = useCallback(
-    async (retryCount = 0, force = false) => {
-      if (!noteId || (isSavingRef.current && !force)) return;
+  // Cleanup function for timeouts
+  const cleanupTimeouts = useCallback(() => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+    }
+    if (processingTimeoutRef.current) {
+      clearTimeout(processingTimeoutRef.current);
+      processingTimeoutRef.current = null;
+    }
+  }, []);
 
-      const now = Date.now();
-      if (
-        now - lastSaveAttemptRef.current < MIN_SAVE_INTERVAL &&
-        retryCount === 0 &&
-        !force
-      ) {
-        return;
-      }
+  const processSaveQueue = useCallback(async () => {
+    // Clear any existing processing timeout
+    if (processingTimeoutRef.current) {
+      clearTimeout(processingTimeoutRef.current);
+      processingTimeoutRef.current = null;
+    }
 
-      try {
-        isSavingRef.current = true;
-        setSaving(true);
-        setError(null); // Clear previous errors
-        onSaveStart?.();
-        lastSaveAttemptRef.current = now;
+    if (isSavingRef.current || saveQueueRef.current.length === 0) return;
 
-        // Capture current editor state
-        const editorState = editor.getEditorState();
-        const textContent = editorState.read(() => $getRoot().getTextContent());
-        const serializedState = editorState.toJSON();
+    const now = Date.now();
+    if (now - lastSuccessfulSaveRef.current < MIN_SAVE_INTERVAL) {
+      // Schedule next processing attempt
+      processingTimeoutRef.current = setTimeout(
+        processSaveQueue,
+        MIN_SAVE_INTERVAL - (now - lastSuccessfulSaveRef.current)
+      );
+      return;
+    }
 
-        // Save in background without affecting editor state
-        await updateNote({
-          id: noteId,
-          title,
-          content: {
-            text: textContent,
-            editorState: {
-              type: 'lexical',
-              content: serializedState,
-            },
+    isSavingRef.current = true;
+    if (!isUnmountingRef.current) {
+      setSaving(true);
+      setError(null);
+    }
+
+    const operation = saveQueueRef.current[0];
+    const operationId = operation.id;
+
+    try {
+      onSaveStart?.();
+
+      await updateNote({
+        id: noteId,
+        title,
+        content: {
+          text: operation.textContent,
+          editorState: {
+            type: 'lexical',
+            content: JSON.parse(operation.content),
           },
-        });
+        },
+      });
 
-        setHasUnsavedChanges(false);
-        setLastSavedAt(new Date());
+      // Verify this operation is still at the front of the queue
+      if (
+        saveQueueRef.current.length > 0 &&
+        saveQueueRef.current[0].id === operationId
+      ) {
+        // Save was successful
+        lastSuccessfulSaveRef.current = Date.now();
+        lastSavedContentRef.current = operation.content;
+        saveQueueRef.current.shift(); // Remove the successful operation
+
+        if (saveQueueRef.current.length === 0) {
+          isDirtyRef.current = false;
+          if (!isUnmountingRef.current) {
+            setHasUnsavedChanges(false);
+            setLastSavedAt(new Date());
+          }
+        }
+
         onSaveComplete?.();
-        retryCountRef.current = 0;
-      } catch (err) {
-        const error =
-          err instanceof Error ? err : new Error('Failed to save note');
+      }
+    } catch (err) {
+      const error =
+        err instanceof Error ? err : new Error('Failed to save note');
 
-        if (retryCount < MAX_RETRIES) {
-          setTimeout(
-            () => {
-              saveContent(retryCount + 1, true);
-            },
-            RETRY_DELAY * (retryCount + 1)
-          );
+      // Verify this operation is still at the front of the queue
+      if (
+        saveQueueRef.current.length > 0 &&
+        saveQueueRef.current[0].id === operationId
+      ) {
+        // Handle retry logic
+        if (operation.attempt < MAX_RETRIES) {
+          operation.attempt++;
+          const retryDelay = RETRY_DELAY * Math.pow(2, operation.attempt - 1);
+          processingTimeoutRef.current = setTimeout(() => {
+            isSavingRef.current = false;
+            processSaveQueue();
+          }, retryDelay);
           return;
         }
 
-        setError(error);
+        // Max retries reached, remove failed operation and notify
+        saveQueueRef.current.shift();
+        if (!isUnmountingRef.current) {
+          setError(error);
+        }
         onSaveError?.(error);
-        retryCountRef.current = 0;
-      } finally {
-        isSavingRef.current = false;
+      }
+    } finally {
+      isSavingRef.current = false;
+      if (!isUnmountingRef.current) {
         setSaving(false);
       }
+
+      // Process next item in queue if any
+      if (saveQueueRef.current.length > 0) {
+        processingTimeoutRef.current = setTimeout(
+          processSaveQueue,
+          MIN_SAVE_INTERVAL
+        );
+      }
+    }
+  }, [
+    noteId,
+    title,
+    updateNote,
+    setSaving,
+    setError,
+    setHasUnsavedChanges,
+    setLastSavedAt,
+    onSaveStart,
+    onSaveComplete,
+    onSaveError,
+  ]);
+
+  const queueSave = useCallback(
+    (force = false) => {
+      if (!noteId) return;
+
+      const editorState = editor.getEditorState();
+      const currentContent = JSON.stringify(editorState.toJSON());
+
+      // Skip if content hasn't changed and it's not forced
+      if (!force && currentContent === lastSavedContentRef.current) {
+        return;
+      }
+
+      const textContent = editorState.read(() => $getRoot().getTextContent());
+
+      // Add new save operation to queue
+      const newOperation: SaveOperation = {
+        content: currentContent,
+        textContent,
+        timestamp: Date.now(),
+        attempt: 0,
+        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      };
+
+      // Manage queue size by removing older operations if needed
+      if (saveQueueRef.current.length >= MAX_QUEUE_SIZE) {
+        saveQueueRef.current = saveQueueRef.current.slice(-MAX_QUEUE_SIZE + 1);
+      }
+
+      saveQueueRef.current.push(newOperation);
+
+      // Trigger queue processing
+      processSaveQueue();
     },
-    [
-      noteId,
-      title,
-      editor,
-      updateNote,
-      setSaving,
-      setError,
-      setHasUnsavedChanges,
-      setLastSavedAt,
-      onSaveStart,
-      onSaveComplete,
-      onSaveError,
-    ]
+    [noteId, editor, processSaveQueue]
   );
 
-  // Register update listener outside of save operation
+  // Register update listener
   useEffect(() => {
-    const removeUpdateListener = editor.registerUpdateListener(
-      ({ editorState, dirtyElements, dirtyLeaves }) => {
-        if (dirtyElements.size > 0 || dirtyLeaves.size > 0) {
-          setHasUnsavedChanges(true);
-
-          if (saveTimeoutRef.current) {
-            clearTimeout(saveTimeoutRef.current);
-          }
-
-          const now = Date.now();
-          const timeSinceLastSave = now - lastSaveAttemptRef.current;
-          const delay = Math.max(
-            0,
-            Math.min(SAVE_DEBOUNCE, MIN_SAVE_INTERVAL - timeSinceLastSave)
-          );
-
-          saveTimeoutRef.current = setTimeout(() => {
-            saveContent();
-          }, delay);
-        }
+    const removeUpdateListener = editor.registerUpdateListener(() => {
+      if (!isDirtyRef.current && !isUnmountingRef.current) {
+        isDirtyRef.current = true;
+        setHasUnsavedChanges(true);
       }
-    );
 
-    return () => {
-      removeUpdateListener();
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
-      // Final save on unmount if there are unsaved changes
-      const { hasUnsavedChanges } = useEditorStore.getState();
-      if (hasUnsavedChanges) {
-        saveContent(0, true);
+
+      saveTimeoutRef.current = setTimeout(() => {
+        if (!isUnmountingRef.current) {
+          queueSave();
+        }
+      }, SAVE_DEBOUNCE);
+    });
+
+    return () => {
+      removeUpdateListener();
+      cleanupTimeouts();
+    };
+  }, [editor, queueSave, setHasUnsavedChanges, cleanupTimeouts]);
+
+  // Handle unmount save
+  useEffect(() => {
+    return () => {
+      isUnmountingRef.current = true;
+      cleanupTimeouts();
+      if (isDirtyRef.current) {
+        queueSave(true);
       }
     };
-  }, [editor, saveContent, setHasUnsavedChanges]);
-
-  // Register focus retention
-  useEffect(() => {
-    const removeFocusListener = editor.registerCommand(
-      SELECTION_CHANGE_COMMAND,
-      () => {
-        const selection = $getSelection();
-        if ($isRangeSelection(selection)) {
-          selection.dirty = true;
-        }
-        return false;
-      },
-      1
-    );
-
-    return removeFocusListener;
-  }, [editor]);
+  }, [queueSave, cleanupTimeouts]);
 
   return null;
 }

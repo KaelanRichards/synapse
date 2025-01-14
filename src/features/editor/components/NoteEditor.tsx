@@ -9,235 +9,168 @@ import { ListPlugin } from '@lexical/react/LexicalListPlugin';
 import { LinkPlugin } from '@lexical/react/LexicalLinkPlugin';
 import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPlugin';
 import { TabIndentationPlugin } from '@lexical/react/LexicalTabIndentationPlugin';
-import { CheckListPlugin } from '@lexical/react/LexicalCheckListPlugin';
 import { TablePlugin } from '@lexical/react/LexicalTablePlugin';
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin';
 import { HorizontalRulePlugin } from '@lexical/react/LexicalHorizontalRulePlugin';
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
-import type { LexicalEditor } from 'lexical';
-import { useEditorStore } from '../store/editorStore';
-import { EditorToolbar } from './EditorToolbar';
-import { FloatingFormatToolbar } from './FloatingFormatToolbar';
 import LexicalErrorBoundary from '@lexical/react/LexicalErrorBoundary';
-import { EditorTheme } from '@/features/editor/config/theme';
-import { EditorNodes } from '@/features/editor/config/nodes';
+import type { LexicalEditor } from 'lexical';
+import { $getRoot } from 'lexical';
+import { useEditorStore } from '../store/editorStore';
 import { useNote } from '@/features/notes/hooks/useNote';
-import { Input } from '@/shared/components/ui/Input';
-import { useEditorSave } from '../hooks/useEditorSave';
-
-// Create a custom initialization plugin using the proper Lexical API
-function EditorInitializationPlugin({
-  onInit,
-}: {
-  onInit: (editor: LexicalEditor) => void;
-}) {
-  const [editor] = useLexicalComposerContext();
-
-  useEffect(() => {
-    onInit(editor);
-  }, [editor, onInit]);
-
-  return null;
-}
+import { AutosavePlugin } from '../plugins/autosave';
+import { EditorNodes } from '../config/nodes';
+import { EditorTheme } from '../config/theme';
+import { EditorInitializationPlugin } from '../plugins/initialization';
 
 interface NoteEditorProps {
   noteId?: string;
 }
 
-const initialConfig = {
+const emptyEditorState = JSON.stringify({
+  root: {
+    children: [
+      {
+        children: [],
+        direction: null,
+        format: '',
+        indent: 0,
+        type: 'paragraph',
+        version: 1,
+      },
+    ],
+    direction: null,
+    format: '',
+    indent: 0,
+    type: 'root',
+    version: 1,
+  },
+});
+
+const createInitialConfig = (content?: any) => ({
   namespace: 'SynapseEditor',
   theme: EditorTheme,
   nodes: EditorNodes,
   onError: (error: Error) => {
     console.error('Editor Error:', error);
   },
-};
+});
 
 export function NoteEditor({ noteId }: NoteEditorProps) {
   const router = useRouter();
   const { note } = useNote(noteId);
   const [title, setTitle] = useState(note?.title || '');
-  const { editor, setEditor } = useEditorStore();
-  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const { editor, setEditor, hasUnsavedChanges } = useEditorStore();
   const [isEditorReady, setIsEditorReady] = useState(false);
-
-  const {
-    isSaving,
-    hasUnsavedChanges,
-    setHasUnsavedChanges,
-    saveError,
-    saveNote,
-    onChange,
-  } = useEditorSave({
-    noteId: noteId || '',
-    editor: isEditorReady ? editor : null,
-    title,
-  });
 
   const handleEditorInitialized = useCallback(
     (editor: LexicalEditor) => {
-      console.log('Editor initialized');
       setEditor(editor);
+      // Set initial state after editor is initialized
+      if (note?.content?.editorState?.content) {
+        try {
+          const content =
+            typeof note.content.editorState.content === 'string'
+              ? JSON.parse(note.content.editorState.content)
+              : note.content.editorState.content;
+
+          const state = editor.parseEditorState(content);
+          editor.setEditorState(state);
+        } catch (error) {
+          console.error('Failed to parse initial state:', error);
+          const state = editor.parseEditorState(emptyEditorState);
+          editor.setEditorState(state);
+        }
+      } else {
+        const state = editor.parseEditorState(emptyEditorState);
+        editor.setEditorState(state);
+      }
       setIsEditorReady(true);
     },
-    [setEditor]
+    [setEditor, note?.content?.editorState?.content]
   );
 
   useEffect(() => {
     if (note?.title) {
-      console.log('Updating title from note:', note.title);
       setTitle(note.title);
     }
   }, [note?.title]);
 
+  // Reset editor state when note changes
   useEffect(() => {
-    if (editor && note?.content && isEditorReady) {
-      console.log('Loading note content into editor');
-      try {
-        const editorState = note.content.editorState.content;
-        if (!editorState) {
-          console.log('No editor state found, initializing with empty state');
-          const emptyState = editor.parseEditorState(
-            '{"root":{"children":[{"children":[],"direction":null,"format":"","indent":0,"type":"paragraph","version":1}],"direction":null,"format":"","indent":0,"type":"root","version":1}}'
-          );
-          editor.setEditorState(emptyState);
-          return;
-        }
-
-        // Validate that the editor state is valid JSON
-        let parsedState;
-        try {
-          if (typeof editorState === 'string') {
-            parsedState = JSON.parse(editorState);
-          } else {
-            parsedState = editorState;
-          }
-
-          // Ensure the state has a root node
-          if (!parsedState.root) {
-            throw new Error('Invalid editor state: missing root node');
-          }
-
-          const state = editor.parseEditorState(parsedState);
-          editor.setEditorState(state);
-          console.log('Note content loaded successfully');
-        } catch (parseError) {
-          console.error('Failed to parse editor state:', parseError);
-          const emptyState = editor.parseEditorState(
-            '{"root":{"children":[{"children":[],"direction":null,"format":"","indent":0,"type":"paragraph","version":1}],"direction":null,"format":"","indent":0,"type":"root","version":1}}'
-          );
-          editor.setEditorState(emptyState);
-        }
-      } catch (error) {
-        console.error('Failed to load note content:', error);
-        const emptyState = editor.parseEditorState(
-          '{"root":{"children":[{"children":[],"direction":null,"format":"","indent":0,"type":"paragraph","version":1}],"direction":null,"format":"","indent":0,"type":"root","version":1}}'
-        );
-        editor.setEditorState(emptyState);
-      }
-    }
-  }, [editor, note?.content, isEditorReady]);
+    setEditor(null as any);
+    setIsEditorReady(false);
+  }, [noteId, setEditor]);
 
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newTitle = e.target.value;
-    console.log('Title changed:', newTitle);
-    setTitle(newTitle);
-    onChange();
+    setTitle(e.target.value);
   };
 
-  useEffect(() => {
-    if (hasUnsavedChanges) {
-      console.log('Detected unsaved changes, triggering save');
-      saveNote().then(() => {
-        if (!saveError) {
-          const now = new Date();
-          console.log(
-            'Save completed, updating lastSavedAt:',
-            now.toISOString()
-          );
-          setLastSavedAt(now);
-        }
-      });
-    }
-  }, [hasUnsavedChanges, saveNote, saveError]);
-
+  // Handle navigation warnings
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (hasUnsavedChanges) {
-        console.log('Preventing page unload due to unsaved changes');
         e.preventDefault();
         e.returnValue = '';
       }
     };
 
-    const handleRouteChange = () => {
-      if (hasUnsavedChanges) {
-        console.log('Route change detected with unsaved changes, saving...');
-        saveNote();
-      }
-    };
-
     window.addEventListener('beforeunload', handleBeforeUnload);
-    router.events.on('routeChangeStart', handleRouteChange);
-
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      router.events.off('routeChangeStart', handleRouteChange);
-
-      if (hasUnsavedChanges) {
-        console.log('Component unmounting with unsaved changes, saving...');
-        saveNote();
-      }
-    };
-  }, [hasUnsavedChanges, saveNote, router]);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges]);
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
-      <Input
-        type="text"
-        placeholder="Untitled Note"
-        value={title}
-        onChange={handleTitleChange}
-        className="mb-4 border-none text-2xl font-bold focus:ring-0"
-      />
-      <LexicalComposer
-        initialConfig={{
-          ...initialConfig,
-          onError: (error: Error) => {
-            console.error('Editor Error:', error);
-          },
-          editable: true,
-        }}
-      >
-        <div className="relative flex h-full flex-col overflow-hidden rounded-lg border">
-          <EditorToolbar />
-          <div className="relative flex-1 overflow-auto">
+    <div className="relative w-full h-full">
+      <div className="flex flex-col gap-4 p-4">
+        <input
+          type="text"
+          placeholder="Untitled"
+          value={title}
+          onChange={handleTitleChange}
+          className="text-xl font-semibold bg-transparent border-none focus:ring-0"
+        />
+
+        <LexicalComposer key={noteId} initialConfig={createInitialConfig()}>
+          <div className="relative prose prose-sm max-w-none">
             <RichTextPlugin
               contentEditable={
-                <ContentEditable className="min-h-[500px] px-4 py-2 focus:outline-none" />
+                <ContentEditable className="min-h-[500px] outline-none" />
               }
               placeholder={
-                <div className="pointer-events-none absolute left-4 top-2 select-none text-gray-400">
+                <div className="absolute top-0 text-muted-foreground">
                   Start writing...
                 </div>
               }
               ErrorBoundary={LexicalErrorBoundary}
             />
-            <FloatingFormatToolbar />
+
+            <HistoryPlugin />
+            <AutoFocusPlugin />
+            <ListPlugin />
+            <LinkPlugin />
+            <TabIndentationPlugin />
+            <MarkdownShortcutPlugin />
+            <TablePlugin />
+            <HorizontalRulePlugin />
+            <EditorInitializationPlugin onInit={handleEditorInitialized} />
+
+            {noteId && (
+              <AutosavePlugin
+                noteId={noteId}
+                title={title}
+                onSaveError={error => {
+                  console.error('Autosave error:', error);
+                }}
+              />
+            )}
+
+            <OnChangePlugin
+              onChange={() => {
+                // Additional change handlers if needed
+              }}
+            />
           </div>
-        </div>
-        <HistoryPlugin />
-        <AutoFocusPlugin />
-        <ListPlugin />
-        <LinkPlugin />
-        <TabIndentationPlugin />
-        <MarkdownShortcutPlugin />
-        <CheckListPlugin />
-        <TablePlugin />
-        <HorizontalRulePlugin />
-        <OnChangePlugin onChange={onChange} />
-        <EditorInitializationPlugin onInit={handleEditorInitialized} />
-      </LexicalComposer>
+        </LexicalComposer>
+      </div>
     </div>
   );
 }
