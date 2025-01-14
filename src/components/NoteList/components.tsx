@@ -22,7 +22,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import type { Note, MaturityFilter, SortOption } from '@/types/notes';
+import type { BaseNote, MaturityFilter, SortOption } from '@/types/notes';
 import { MATURITY_OPTIONS, SORT_OPTIONS } from '@/types/notes';
 
 export const LoadingSkeleton = () => (
@@ -106,16 +106,16 @@ export const NoteItem = React.memo(
     onTogglePin,
     isDragging,
   }: {
-    note: Note;
+    note: BaseNote;
     isActive?: boolean;
     onTogglePin?: (noteId: string) => void;
     isDragging?: boolean;
   }) => {
     const router = useRouter();
     const truncatedContent =
-      note.content.length > 120
-        ? note.content.slice(0, 120) + '...'
-        : note.content;
+      note.content.text?.length > 120
+        ? note.content.text.slice(0, 120) + '...'
+        : note.content.text || '';
 
     const handleClick = (e: React.MouseEvent) => {
       if (isDragging) {
@@ -179,7 +179,7 @@ export const SortableNoteItem = React.memo(
     note,
     onTogglePin,
   }: {
-    note: Note;
+    note: BaseNote;
     onTogglePin?: (noteId: string) => void;
   }) => {
     const {
@@ -245,7 +245,7 @@ export const NoteListContent = React.memo(
     onTogglePin,
     onUpdateDisplayOrder,
   }: {
-    notes: Note[];
+    notes: BaseNote[];
     sortBy: SortOption;
     onTogglePin: (noteId: string) => void;
     onUpdateDisplayOrder: (oldIndex: number, newIndex: number) => void;

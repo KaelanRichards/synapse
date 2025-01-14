@@ -1,240 +1,248 @@
-import React, { useEffect, useCallback, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNoteMutations } from '@/hooks/useNoteMutations';
 import { EditorToolbar } from './EditorToolbar';
-import type { Selection, NoteEditorProps, EditorStats } from './types';
-import { AutosavePlugin } from './plugins/AutosavePlugin';
-import { FormatPlugin } from '@/components/editor/plugins/FormatPlugin';
 import useEditorStore from '@/store/editorStore';
-import { EditorErrorBoundary } from './ErrorBoundary';
-import { VirtualTextarea } from './VirtualTextarea';
 import { FloatingFormatToolbar } from './FloatingFormatToolbar';
+import { LexicalComposer } from '@lexical/react/LexicalComposer';
+import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
+import { ContentEditable } from '@lexical/react/LexicalContentEditable';
+import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
+import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin';
+import LexicalErrorBoundary from '@lexical/react/LexicalErrorBoundary';
+import { FormattingPlugin } from './plugins/FormattingPlugin';
+import { KeyboardShortcutsPlugin } from './plugins/KeyboardShortcutsPlugin';
+import { debouncedPromise } from '@/lib/utils';
+import { EditorState, createEditor, $getRoot } from 'lexical';
+import type { EditorNote } from '@/types/notes';
+import { useToast } from '@/hooks/useToast';
 
 const SAVE_DELAY = 1000;
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000;
 
-// Initialize plugins
-const defaultPlugins = [new AutosavePlugin(), new FormatPlugin()];
+const theme = {
+  paragraph: 'mb-2',
+  text: {
+    bold: 'font-bold',
+    italic: 'italic',
+    underline: 'underline',
+    strikethrough: 'line-through',
+  },
+};
+
+interface SaveState {
+  lastSavedContent: string;
+  isSaving: boolean;
+  lastSaveError: Error | null;
+  pendingSave: boolean;
+}
+
+interface NoteEditorProps {
+  initialNote: EditorNote;
+}
+
+const createEmptyEditorState = () => ({
+  root: {
+    children: [
+      {
+        children: [{ text: '', type: 'text' }],
+        type: 'paragraph',
+      },
+    ],
+    direction: null,
+    format: '',
+    indent: 0,
+    type: 'root',
+    version: 1,
+  },
+});
 
 export const NoteEditor: React.FC<NoteEditorProps> = ({ initialNote }) => {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { updateNote } = useNoteMutations();
-  const [content, setContent] = useState(initialNote?.content || '');
-  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving'>('saved');
-  const [isAmbientSound, setIsAmbientSound] = useState(false);
-  const [toolbarPosition, setToolbarPosition] = useState({ x: 0, y: 0 });
-  const [editorStats, setEditorStats] = useState<EditorStats>({
-    wordCount: 0,
-    charCount: 0,
-    timeSpent: 0,
-    linesCount: 0,
-    readingTime: 0,
+  const { setEditor, setEditorFocused } = useEditorStore();
+  const { toast } = useToast();
+  const [saveState, setSaveState] = useState<SaveState>({
+    lastSavedContent: '',
+    isSaving: false,
+    lastSaveError: null,
+    pendingSave: false,
   });
-  const [commands] = useState(new Map());
 
-  // Get editor state and actions from Zustand store
-  const {
-    commands: storeCommands,
-    setSelection,
-    setToolbarPosition: setStoreToolbarPosition,
-    showToolbar,
-    setShowToolbar,
-    initialize,
-    destroy,
-    undo,
-    redo,
-  } = useEditorStore();
+  // Create a stable debounced save function
+  const debouncedSaveRef = useRef(
+    debouncedPromise(
+      async (editorState: EditorState) => {
+        if (!initialNote?.id) return;
 
-  // Update content when initialNote changes
-  useEffect(() => {
-    if (content !== initialNote?.content) {
-      setContent(initialNote?.content || '');
-    }
-  }, [initialNote?.content]);
+        setSaveState(prev => ({ ...prev, isSaving: true }));
+        try {
+          const editorStateJSON = editorState.toJSON();
+          const plainText = editorState.read(() =>
+            $getRoot().getTextContent().trim()
+          );
+
+          await updateNote.mutateAsync({
+            id: initialNote.id,
+            content: {
+              editorState: editorStateJSON,
+              text: plainText,
+            },
+            is_pinned: initialNote.is_pinned,
+            display_order: initialNote.display_order,
+          });
+
+          setSaveState(prev => ({
+            ...prev,
+            lastSavedContent: plainText,
+            isSaving: false,
+            lastSaveError: null,
+            pendingSave: false,
+          }));
+        } catch (error) {
+          setSaveState(prev => ({
+            ...prev,
+            isSaving: false,
+            lastSaveError: error as Error,
+          }));
+          throw error;
+        }
+      },
+      SAVE_DELAY,
+      {
+        maxRetries: MAX_RETRIES,
+        retryDelay: RETRY_DELAY,
+        onError: (error, attempt) => {
+          if (attempt === MAX_RETRIES) {
+            toast({
+              title: 'Failed to save note',
+              description: 'Please check your connection and try again.',
+              variant: 'destructive',
+            });
+            console.error('Failed to save note after retries:', error);
+          }
+        },
+      }
+    )
+  );
 
   const handleChange = useCallback(
-    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      setContent(e.target.value);
-      setSaveStatus('saving');
+    (editorState: EditorState) => {
+      const plainText = editorState.read(() =>
+        $getRoot().getTextContent().trim()
+      );
+
+      // Only save if content has changed
+      if (plainText !== saveState.lastSavedContent) {
+        setSaveState(prev => ({ ...prev, pendingSave: true }));
+        debouncedSaveRef.current(editorState).catch(() => {
+          // Error handling is done in the debounced function
+        });
+      }
     },
-    []
+    [saveState.lastSavedContent]
   );
 
-  const handleToggleAmbientSound = useCallback(() => {
-    setIsAmbientSound(prev => !prev);
-  }, []);
-
-  // Initialize editor with plugins
+  // Save on unmount if there are unsaved changes
   useEffect(() => {
-    if (initialNote?.content) {
-      initialize();
-      setContent(initialNote.content);
-    }
     return () => {
-      destroy();
-    };
-  }, [destroy, initialize, initialNote?.content, setContent]);
+      if (saveState.pendingSave) {
+        const editor = useEditorStore.getState().editor;
+        if (!editor) return;
 
-  // Handle keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
-        e.preventDefault();
-        if (e.shiftKey) {
-          redo();
-        } else {
-          undo();
+        // Cancel any pending debounced saves
+        debouncedSaveRef.current.cancel();
+
+        // Flush the save immediately
+        debouncedSaveRef.current.flush().catch(error => {
+          console.error('Failed to save on unmount:', error);
+          toast({
+            title: 'Failed to save changes',
+            description: 'Some changes may have been lost.',
+            variant: 'destructive',
+          });
+        });
+      }
+    };
+  }, [saveState.pendingSave, toast]);
+
+  const initialConfig = {
+    namespace: 'SynapseEditor',
+    theme,
+    onError: (error: Error) => {
+      console.error('Editor error:', error);
+      toast({
+        title: 'Editor Error',
+        description: 'An error occurred in the editor.',
+        variant: 'destructive',
+      });
+    },
+    editorState: initialNote?.content
+      ? (editor: any) => {
+          try {
+            const content = initialNote.content;
+            if (!content) {
+              editor.setEditorState(
+                editor.parseEditorState(createEmptyEditorState())
+              );
+              return;
+            }
+
+            if (content.editorState) {
+              editor.setEditorState(
+                editor.parseEditorState(content.editorState)
+              );
+            } else {
+              editor.setEditorState(
+                editor.parseEditorState(createEmptyEditorState())
+              );
+            }
+          } catch (error) {
+            console.error('Failed to initialize editor state:', error);
+            editor.setEditorState(
+              editor.parseEditorState(createEmptyEditorState())
+            );
+          }
         }
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [redo, undo]);
-
-  // Handle selection changes for toolbar positioning
-  const handleSelectionChange = useCallback(
-    (selection: Selection | null) => {
-      console.log('Selection change triggered:', { selection });
-      setSelection(selection);
-
-      if (selection && selection.text && textareaRef.current) {
-        console.log('Valid selection detected');
-        const textarea = textareaRef.current;
-        const { selectionStart, selectionEnd } = textarea;
-
-        // Get textarea position and dimensions
-        const textareaRect = textarea.getBoundingClientRect();
-
-        // Create a temporary div to measure text dimensions
-        const measureDiv = document.createElement('div');
-        measureDiv.style.position = 'absolute';
-        measureDiv.style.visibility = 'hidden';
-        measureDiv.style.whiteSpace = 'pre-wrap';
-        measureDiv.style.width = `${textarea.clientWidth}px`;
-        measureDiv.style.font = window.getComputedStyle(textarea).font;
-        measureDiv.style.lineHeight =
-          window.getComputedStyle(textarea).lineHeight;
-        measureDiv.style.padding = window.getComputedStyle(textarea).padding;
-
-        // Get text before selection
-        const textBeforeSelection = textarea.value.substring(0, selectionStart);
-        const selectedText = textarea.value.substring(
-          selectionStart,
-          selectionEnd
-        );
-
-        // Create span for measurement
-        const measureSpan = document.createElement('span');
-        measureDiv.textContent = textBeforeSelection;
-        measureDiv.appendChild(measureSpan);
-        measureSpan.textContent = selectedText;
-
-        // Add to DOM temporarily
-        document.body.appendChild(measureDiv);
-
-        // Get the position of the selection
-        const spanRect = measureSpan.getBoundingClientRect();
-        const selectionTop =
-          textareaRect.top +
-          (spanRect.top - measureDiv.getBoundingClientRect().top);
-        const selectionLeft =
-          textareaRect.left +
-          (spanRect.left - measureDiv.getBoundingClientRect().left);
-        const selectionWidth = spanRect.width;
-
-        // Cleanup
-        document.body.removeChild(measureDiv);
-
-        // Calculate toolbar position
-        const x = selectionLeft + selectionWidth / 2;
-        const y = selectionTop;
-
-        console.log('Toolbar position calculated:', {
-          x,
-          y,
-          textareaRect,
-          selectionTop,
-          selectionLeft,
-        });
-        setToolbarPosition({ x, y });
-        setShowToolbar(true);
-        console.log('showToolbar set to true');
-      } else {
-        console.log('Invalid selection, hiding toolbar');
-        setShowToolbar(false);
-      }
-    },
-    [setSelection, setToolbarPosition, setShowToolbar]
-  );
-
-  // Autosave functionality
-  useEffect(() => {
-    if (!initialNote?.id || !content || saveStatus === 'saving') return;
-
-    const saveTimeout = setTimeout(async () => {
-      try {
-        await updateNote.mutateAsync({
-          id: initialNote.id,
-          content,
-        });
-      } catch (error) {
-        console.error('Failed to save note:', error);
-      }
-    }, SAVE_DELAY);
-
-    return () => {
-      clearTimeout(saveTimeout);
-    };
-  }, [content, initialNote?.id, saveStatus, updateNote]);
-
-  const handleEditorReset = () => {
-    // Reset editor state
-    setContent('');
-    setSelection(null);
-    // Re-initialize plugins
-    destroy();
-    initialize();
-    defaultPlugins.forEach(plugin => {
-      useEditorStore.getState().registerPlugin(plugin);
-    });
+      : undefined,
   };
 
+  // Set initial saved content after editor initialization
+  useEffect(() => {
+    if (initialNote?.content?.text) {
+      setSaveState(prev => ({
+        ...prev,
+        lastSavedContent: initialNote?.content?.text || '',
+      }));
+    }
+  }, [initialNote?.content?.text]);
+
   return (
-    <EditorErrorBoundary onReset={handleEditorReset}>
-      <div className="flex h-full flex-col">
-        <header className="flex items-center justify-between border-b border-border px-4 py-2">
-          <div className="flex items-center space-x-4">
-            <EditorToolbar
-              stats={editorStats}
-              saveStatus={saveStatus}
-              isAmbientSound={isAmbientSound}
-              onToggleAmbientSound={handleToggleAmbientSound}
-            />
-          </div>
-          <div className="flex items-center space-x-2">
-            <span className="text-sm text-ink-muted">
-              {saveStatus === 'saved' ? 'Saved' : 'Saving...'}
-            </span>
-          </div>
-        </header>
-
-        {/* Editor Content */}
-        <div className="flex-1 overflow-auto">
-          <VirtualTextarea
-            textareaRef={textareaRef}
-            content={content}
-            onChange={handleChange}
-            onSelect={handleSelectionChange}
+    <LexicalComposer key={initialNote?.id} initialConfig={initialConfig}>
+      <div className="relative w-full h-full flex flex-col">
+        <EditorToolbar />
+        <div className="flex-1 relative overflow-auto">
+          <RichTextPlugin
+            contentEditable={
+              <ContentEditable
+                className="min-h-full p-4 focus:outline-none"
+                onFocus={() => setEditorFocused(true)}
+                onBlur={() => setEditorFocused(false)}
+              />
+            }
+            placeholder={
+              <div className="absolute top-4 left-4 text-gray-400 pointer-events-none">
+                Start writing...
+              </div>
+            }
+            ErrorBoundary={LexicalErrorBoundary}
           />
+          <OnChangePlugin onChange={handleChange} />
+          <HistoryPlugin />
+          <FormattingPlugin />
+          <KeyboardShortcutsPlugin />
+          <FloatingFormatToolbar />
         </div>
-
-        {/* Floating Format Toolbar */}
-        {showToolbar && (
-          <FloatingFormatToolbar
-            position={toolbarPosition}
-            commands={commands}
-          />
-        )}
       </div>
-    </EditorErrorBoundary>
+    </LexicalComposer>
   );
 };

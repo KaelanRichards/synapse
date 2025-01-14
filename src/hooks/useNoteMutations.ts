@@ -1,19 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSupabase } from '@/contexts/SupabaseContext';
-import type { Note } from '@/types/supabase';
-
-interface CreateNoteData {
-  title: string;
-  content: string;
-  maturity_state?: Note['maturity_state'];
-}
-
-interface UpdateNoteData {
-  id: string;
-  title?: string;
-  content?: string;
-  maturity_state?: Note['maturity_state'];
-}
+import type { CreateNoteData, UpdateNoteData, BaseNote } from '@/types/notes';
 
 export function useNoteMutations() {
   const supabase = useSupabase();
@@ -21,62 +8,64 @@ export function useNoteMutations() {
 
   const createNote = useMutation({
     mutationFn: async (data: CreateNoteData) => {
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) throw new Error('User not authenticated');
+
       const { data: note, error } = await supabase
         .from('notes')
         .insert([
           {
-            ...data,
+            user_id: user.user.id,
+            title: data.title,
+            content: data.content,
             maturity_state: data.maturity_state || 'SEED',
+            is_pinned: data.is_pinned || false,
+            display_order: data.display_order || Date.now(),
           },
         ])
         .select()
         .single();
 
       if (error) throw error;
-      return note;
+      return note as BaseNote;
     },
-    onSuccess: () => {
-      // Invalidate notes list queries
+    onSuccess: note => {
+      queryClient.setQueryData(['note', note.id], note);
       queryClient.invalidateQueries({ queryKey: ['notes'] });
     },
   });
 
   const updateNote = useMutation({
-    mutationFn: async ({ id, ...data }: UpdateNoteData) => {
-      const { data: note, error } = await supabase
+    mutationFn: async (data: UpdateNoteData) => {
+      const { error } = await supabase
         .from('notes')
-        .update(data)
-        .eq('id', id)
-        .select()
-        .single();
+        .update({
+          title: data.title,
+          content: data.content,
+          maturity_state: data.maturity_state,
+          is_pinned: data.is_pinned,
+          display_order: data.display_order,
+        })
+        .eq('id', data.id);
 
       if (error) throw error;
-      return note;
     },
-    onSuccess: data => {
-      // Invalidate specific note and notes list queries
+    onSuccess: (_, data) => {
       queryClient.invalidateQueries({ queryKey: ['note', data.id] });
       queryClient.invalidateQueries({ queryKey: ['notes'] });
     },
   });
 
   const deleteNote = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from('notes').delete().eq('id', id);
-
+    mutationFn: async (noteId: string) => {
+      const { error } = await supabase.from('notes').delete().eq('id', noteId);
       if (error) throw error;
-      return id;
     },
-    onSuccess: id => {
-      // Invalidate specific note and notes list queries
-      queryClient.invalidateQueries({ queryKey: ['note', id] });
+    onSuccess: (_, noteId) => {
+      queryClient.removeQueries({ queryKey: ['note', noteId] });
       queryClient.invalidateQueries({ queryKey: ['notes'] });
     },
   });
 
-  return {
-    createNote,
-    updateNote,
-    deleteNote,
-  };
+  return { createNote, updateNote, deleteNote };
 }

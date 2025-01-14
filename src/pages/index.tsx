@@ -4,6 +4,37 @@ import { Textarea } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { useNoteMutations } from '@/hooks/useNoteMutations';
 
+// Initial empty editor state JSON
+const EMPTY_EDITOR_STATE = JSON.stringify({
+  root: {
+    children: [
+      {
+        children: [
+          {
+            detail: 0,
+            format: 0,
+            mode: 'normal',
+            style: '',
+            text: '',
+            type: 'text',
+            version: 1,
+          },
+        ],
+        direction: 'ltr',
+        format: '',
+        indent: 0,
+        type: 'paragraph',
+        version: 1,
+      },
+    ],
+    direction: 'ltr',
+    format: '',
+    indent: 0,
+    type: 'root',
+    version: 1,
+  },
+});
+
 export default function Home() {
   const router = useRouter();
   const { createNote } = useNoteMutations();
@@ -17,9 +48,43 @@ export default function Home() {
     e.preventDefault();
     if (!content.trim()) return;
 
+    // Create initial editor state with the content
+    const editorState = {
+      root: {
+        children: [
+          {
+            children: [
+              {
+                detail: 0,
+                format: 0,
+                mode: 'normal',
+                style: '',
+                text: content,
+                type: 'text',
+                version: 1,
+              },
+            ],
+            direction: 'ltr',
+            format: '',
+            indent: 0,
+            type: 'paragraph',
+            version: 1,
+          },
+        ],
+        direction: 'ltr',
+        format: '',
+        indent: 0,
+        type: 'root',
+        version: 1,
+      },
+    };
+
     const note = await createNote.mutateAsync({
       title: content.split('\n')[0] || 'Untitled Note',
-      content,
+      content: {
+        text: content,
+        editorState: editorState,
+      },
     });
 
     router.push(`/notes/${note.id}`);

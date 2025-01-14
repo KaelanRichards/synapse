@@ -28,7 +28,17 @@ const NoteDetail: NextPage = () => {
     return <div className="p-4">Note not found</div>;
   }
 
-  return <NoteEditor initialNote={note} />;
+  const editorNote = {
+    id: note.id,
+    content: {
+      text: note.content.text || '',
+      editorState: note.content.editorState,
+    },
+    is_pinned: note.is_pinned,
+    display_order: note.display_order,
+  };
+
+  return <NoteEditor initialNote={editorNote} />;
 };
 
 export default NoteDetail;

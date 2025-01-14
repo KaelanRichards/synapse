@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { Modal, Button, Card, Alert, Input, Toggle } from '@/components/ui';
+import { Modal, Button, Card, Alert, Input } from '@/components/ui';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
-import { useUIStore } from '@/store/uiStore';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import supabase from '@/lib/supabase';
+import { useUIStore } from '@/store/uiStore';
 
 interface SettingsModalProps {
   isOpen: boolean;

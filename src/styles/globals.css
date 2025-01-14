@@ -2,6 +2,46 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Toast animations */
+@keyframes slideInFromTop {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideOutToRight {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.animate-in {
+  animation: slideInFromTop 150ms ease-in-out;
+}
+
+.animate-out {
+  animation: slideOutToRight 150ms ease-in-out;
+}
+
+.fade-out {
+  animation: fadeOut 100ms ease-in-out;
+}
+
 @layer base {
   /* Base styles */
   html {

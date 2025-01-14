@@ -17,6 +17,8 @@ services:
       - .env.local
     environment:
       - NODE_ENV=development
+    depends_on:
+      - supabase
     restart: unless-stopped
 
   # Production service
@@ -30,4 +32,29 @@ services:
       - .env.local
     environment:
       - NODE_ENV=production
+    depends_on:
+      - supabase
     restart: unless-stopped
+
+  # Supabase service
+  supabase:
+    image: supabase/supabase-dev:latest
+    ports:
+      - '54321:54321' # REST API
+      - '54322:54322' # PostgreSQL Database
+      - '54323:54323' # Studio
+      - '54324:54324' # Inbucket
+    volumes:
+      - ./supabase/migrations:/supabase/migrations
+      - ./supabase/seed.sql:/supabase/seed.sql
+      - ./supabase/config.toml:/supabase/config.toml
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-your-super-secret-password}
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-token-with-at-least-32-characters}
+      ANON_KEY: ${SUPABASE_ANON_KEY:-your-anon-key}
+      SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-your-service-role-key}
+    healthcheck:
+      test: ['CMD', 'pg_isready', '-U', 'postgres']
+      interval: 10s
+      timeout: 5s
+      retries: 5

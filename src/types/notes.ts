@@ -1,19 +1,55 @@
-import { Note as SupabaseNote } from './supabase';
+import type { DatabaseNote, DatabaseConnection } from './supabase';
 
-export type MaturityState =
+// Core types
+export type NoteMaturityState =
   | 'SEED'
   | 'SAPLING'
   | 'GROWTH'
   | 'MATURE'
   | 'EVOLVING';
-export type MaturityFilter = MaturityState | 'ALL';
+
+export type ConnectionType = 'related' | 'prerequisite' | 'refines';
+export type MaturityFilter = NoteMaturityState | 'ALL';
 export type SortOption = 'recent' | 'title' | 'maturity' | 'manual';
 
-export interface Note extends SupabaseNote {
-  is_pinned?: boolean;
-  display_order: number;
+// Editor-specific types
+export interface NoteContent {
+  text: string;
+  editorState: Record<string, any>;
 }
 
+// Note types for different contexts
+export type BaseNote = DatabaseNote;
+export interface NoteWithConnections extends DatabaseNote {
+  connections: DatabaseConnection[];
+}
+
+export interface EditorNote {
+  id: string;
+  content?: NoteContent;
+  is_pinned?: boolean;
+  display_order?: number;
+}
+
+// Mutation types
+export interface CreateNoteData {
+  title: string;
+  content: NoteContent;
+  maturity_state?: NoteMaturityState;
+  is_pinned?: boolean;
+  display_order?: number;
+}
+
+export interface UpdateNoteData {
+  id: string;
+  title?: string;
+  content?: NoteContent;
+  maturity_state?: NoteMaturityState;
+  is_pinned?: boolean;
+  display_order?: number;
+}
+
+// UI types
 export interface MaturityOption {
   value: MaturityFilter;
   label: string;
@@ -21,6 +57,7 @@ export interface MaturityOption {
   description: string;
 }
 
+// Constants
 export const MATURITY_OPTIONS: readonly MaturityOption[] = [
   {
     value: 'ALL',

@@ -1,18 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Command } from 'cmdk';
 import { useRouter } from 'next/router';
-import { useUIStore } from '@/store/uiStore';
 import { useNoteList } from '@/hooks/useNoteList';
 import { cn } from '@/lib/utils';
 import {
   DocumentIcon,
-  MagnifyingGlassIcon,
   SunIcon,
   MoonIcon,
   ComputerDesktopIcon,
-  AdjustmentsHorizontalIcon,
   ClockIcon,
 } from '@heroicons/react/24/outline';
+import { useUIStore } from '@/store/uiStore';
 
 export function CommandPalette() {
   const [open, setOpen] = useState(false);

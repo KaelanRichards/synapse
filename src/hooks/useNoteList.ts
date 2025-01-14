@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSupabase } from '@/contexts/SupabaseContext';
-import type { Note, MaturityFilter, SortOption } from '@/types/notes';
+import type { BaseNote, MaturityFilter, SortOption } from '@/types/notes';
 
 export function useNoteList() {
   const supabase = useSupabase();
@@ -16,26 +16,46 @@ export function useNoteList() {
 
   // Set up real-time subscription
   useEffect(() => {
-    const subscription = supabase
-      .channel('notes_changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'notes',
-          filter: 'is_pinned = true OR is_pinned = false',
-        },
-        () => {
-          queryClient.invalidateQueries({
-            queryKey: ['notes', selectedMaturity],
-          });
-        }
-      )
-      .subscribe();
+    const setupSubscription = async () => {
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) return null;
+
+      return supabase
+        .channel('notes_changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'notes',
+            filter: `user_id=eq.${user.user.id}`,
+          },
+          payload => {
+            // Update the specific note in the cache
+            if (
+              payload.eventType === 'UPDATE' ||
+              payload.eventType === 'INSERT'
+            ) {
+              queryClient.setQueryData(['note', payload.new.id], payload.new);
+            }
+            // Invalidate the list query to refetch
+            queryClient.invalidateQueries({
+              queryKey: ['notes', selectedMaturity],
+            });
+          }
+        )
+        .subscribe();
+    };
+
+    let subscription: ReturnType<typeof supabase.channel> | null = null;
+    setupSubscription().then(sub => {
+      if (sub) subscription = sub;
+    });
 
     return () => {
-      subscription.unsubscribe();
+      if (subscription) {
+        subscription.unsubscribe();
+      }
     };
   }, [queryClient, supabase, selectedMaturity]);
 
@@ -47,9 +67,13 @@ export function useNoteList() {
   } = useQuery({
     queryKey: ['notes', selectedMaturity],
     queryFn: async () => {
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) throw new Error('User not authenticated');
+
       let query = supabase
         .from('notes')
         .select('*')
+        .eq('user_id', user.user.id)
         .order('display_order', { ascending: true });
 
       if (selectedMaturity !== 'ALL') {
@@ -58,7 +82,13 @@ export function useNoteList() {
 
       const { data, error } = await query;
       if (error) throw error;
-      return data as Note[];
+
+      // Update individual note cache entries
+      data?.forEach(note => {
+        queryClient.setQueryData(['note', note.id], note);
+      });
+
+      return data as BaseNote[];
     },
     staleTime: 30000,
     refetchOnWindowFocus: false,
@@ -73,8 +103,11 @@ export function useNoteList() {
 
       // Optimistically update the cache
       const updatedNote = { ...note, is_pinned: !note.is_pinned };
-      const updatedNotes = notes.map(n => (n.id === noteId ? updatedNote : n));
-      queryClient.setQueryData(['notes', selectedMaturity], updatedNotes);
+      queryClient.setQueryData(['note', noteId], updatedNote);
+      queryClient.setQueryData(
+        ['notes', selectedMaturity],
+        notes.map(n => (n.id === noteId ? updatedNote : n))
+      );
 
       try {
         const { error } = await supabase
@@ -86,8 +119,10 @@ export function useNoteList() {
           throw error;
         }
       } catch (error) {
-        console.error('Failed to toggle pin:', error);
+        // Revert on error
+        queryClient.setQueryData(['note', noteId], note);
         queryClient.setQueryData(['notes', selectedMaturity], notes);
+        console.error('Failed to toggle pin:', error);
       }
     },
 
@@ -104,8 +139,11 @@ export function useNoteList() {
         display_order: (index + 1) * 1000,
       }));
 
-      // Update the cache optimistically
+      // Optimistically update the cache
       queryClient.setQueryData(['notes', selectedMaturity], updatedNotes);
+      updatedNotes.forEach(note => {
+        queryClient.setQueryData(['note', note.id], note);
+      });
 
       try {
         // Update all notes in a single transaction using individual updates
@@ -120,12 +158,15 @@ export function useNoteList() {
         const errors = results.filter(r => r.error).map(r => r.error);
 
         if (errors.length > 0) {
-          console.error('Some updates failed:', errors);
-          queryClient.setQueryData(['notes', selectedMaturity], notes);
+          throw new Error('Some updates failed');
         }
       } catch (error) {
-        console.error('Failed to update note orders:', error);
+        // Revert on error
         queryClient.setQueryData(['notes', selectedMaturity], notes);
+        notes.forEach(note => {
+          queryClient.setQueryData(['note', note.id], note);
+        });
+        console.error('Failed to update note orders:', error);
       }
     },
   };
@@ -137,10 +178,11 @@ export function useNoteList() {
 
     // Apply search filter
     if (searchQuery) {
+      const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
         note =>
-          note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          note.content.toLowerCase().includes(searchQuery.toLowerCase())
+          note.title.toLowerCase().includes(query) ||
+          note.content.text?.toLowerCase().includes(query)
       );
     }
 

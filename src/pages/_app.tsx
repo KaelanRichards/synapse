@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Layout from '@/components/Layout';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import CommandPaletteProvider from '@/components/CommandPaletteProvider';
+import { ToastProvider } from '@/components/ui/ToastProvider';
 import '@/styles/globals.css';
 
 const queryClient = new QueryClient({
@@ -25,11 +26,13 @@ export default function App({ Component, pageProps }: AppProps) {
       <SupabaseProvider>
         <AuthProvider>
           <CommandPaletteProvider>
-            <ProtectedRoute>
-              <Layout>
-                <Component {...pageProps} />
-              </Layout>
-            </ProtectedRoute>
+            <ToastProvider>
+              <ProtectedRoute>
+                <Layout>
+                  <Component {...pageProps} />
+                </Layout>
+              </ProtectedRoute>
+            </ToastProvider>
           </CommandPaletteProvider>
         </AuthProvider>
       </SupabaseProvider>

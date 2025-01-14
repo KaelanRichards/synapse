@@ -1,122 +1,106 @@
 # Synapse
 
-A dynamic knowledge management platform designed to interconnect atomic knowledge units into meaningful clusters.
+A dynamic knowledge management platform designed to interconnect atomic knowledge units (notes) into meaningful clusters.
 
 ## Tech Stack
 
-- **Frontend**: Next.js 13, React, TypeScript, Tailwind CSS
-- **State Management**: React Query, React Flow
+- **Frontend**: Next.js 13, React, TypeScript, Tailwind CSS, React Query, React Flow
 - **Backend**: Supabase (PostgreSQL, Authentication, Realtime)
-- **Deployment**: Vercel
+- **Deployment**: Vercel, GitHub Actions for CI/CD
 
-## Quick Start
+## Local Development Setup
 
-1. **Clone the repository**
+1. **Prerequisites**
 
-   ```bash
-   git clone https://github.com/KaelanRichards/synapse.git
-   cd synapse
-   ```
+   - Node.js 18+
+   - Docker (for local Supabase)
+   - Supabase CLI
 
-2. **Install dependencies**
+2. **Install Dependencies**
 
    ```bash
    npm install
    ```
 
-3. **Set up environment variables**
+3. **Set Up Local Supabase**
 
    ```bash
-   cp .env.example .env.local
+   # Install Supabase CLI if you haven't already
+   brew install supabase/tap/supabase
+
+   # Start local Supabase
+   supabase start
+
+   # This will output your local credentials - add them to .env.local
    ```
 
-   Then edit `.env.local` with your Supabase credentials.
+4. **Environment Variables**
 
-4. **Start development server**
+   - Copy `.env.local.example` to `.env.local`
+   - Update with your local Supabase credentials
+   - Add GitHub OAuth credentials if needed
+
+5. **Run Development Server**
+
    ```bash
    npm run dev
    ```
-   Visit [http://localhost:3000](http://localhost:3000)
 
-## Development Scripts
+6. **Database Migrations**
 
-- `npm run dev` - Start development server
-- `npm run build` - Build production bundle
-- `npm run start` - Start production server
-- `npm run lint` - Run ESLint
-- `npm run format` - Format code with Prettier
-- `npm run type-check` - Run TypeScript type checking
+   ```bash
+   # Apply migrations
+   supabase db reset
+
+   # Create a new migration
+   supabase migration new your_migration_name
+   ```
 
 ## Project Structure
 
 ```
 synapse/
-├── src/
-│   ├── components/    # React components
-│   ├── hooks/        # Custom React hooks
-│   ├── lib/          # Utility functions and configurations
-│   ├── pages/        # Next.js pages
-│   ├── styles/       # Global styles and Tailwind
-│   └── types/        # TypeScript type definitions
-├── public/           # Static assets
-└── scripts/         # Development and deployment scripts
+├── components/        # React components
+├── contexts/         # React contexts
+├── hooks/           # Custom React hooks
+├── lib/             # Utility functions and configurations
+├── pages/           # Next.js pages and API routes
+├── prisma/          # Database schema and migrations
+├── styles/          # Global styles and Tailwind config
+├── types/           # TypeScript type definitions
+└── supabase/        # Supabase configurations and migrations
 ```
+
+## Database Schema
+
+The project uses a PostgreSQL database with the following main tables:
+
+- `notes`: Main table for storing knowledge units
+- `note_versions`: Version history for notes
+- `connections`: Relationships between notes
+- `tags`: Note categorization
+- `note_tags`: Junction table for note-tag relationships
+
+See `supabase/migrations` for the complete schema definition.
+
+## Features
+
+- Rich text editing with Lexical
+- Note versioning
+- Bidirectional note connections
+- Tag-based organization
+- Maturity states for knowledge evolution
+- Real-time collaboration
+- GitHub authentication
 
 ## Contributing
 
-1. Create a feature branch (`git checkout -b feature/amazing-feature`)
-2. Commit your changes (`git commit -m 'Add amazing feature'`)
-3. Push to the branch (`git push origin feature/amazing-feature`)
-4. Open a Pull Request
-
-## Development Guidelines
-
-- Use TypeScript for all new code
-- Follow the existing code style (enforced by ESLint and Prettier)
-- Write meaningful commit messages
-- Update documentation for significant changes
-- Add tests for new features
-
-## Deployment
-
-The application automatically deploys to Vercel on merges to the main branch. Preview deployments are created for pull requests.
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Docker Setup
-
-### Development
-
-To run the application in development mode with Docker:
-
-```bash
-# Build and start the development container
-docker-compose up web-dev
-
-# Stop the containers
-docker-compose down
-```
-
-### Production
-
-To run the application in production mode with Docker:
-
-```bash
-# Build and start the production container
-docker-compose up web-prod
-
-# Stop the containers
-docker-compose down
-```
-
-### Environment Variables
-
-Make sure to copy `.env.example` to `.env.local` and set the appropriate values before running the containers:
-
-```bash
-cp .env.example .env.local
-```
-
-The Docker containers will automatically use the environment variables from your `.env.local` file.

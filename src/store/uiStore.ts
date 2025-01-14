@@ -1,40 +1,19 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import { immer } from 'zustand/middleware/immer';
 
 interface UIState {
   theme: 'light' | 'dark' | 'system';
-  fontSize: number;
   fontFamily: 'serif' | 'sans' | 'mono';
-}
-
-interface UIActions {
-  setTheme: (theme: UIState['theme']) => void;
+  fontSize: number;
+  setTheme: (theme: 'light' | 'dark' | 'system') => void;
+  setFontFamily: (family: 'serif' | 'sans' | 'mono') => void;
   setFontSize: (size: number) => void;
-  setFontFamily: (family: UIState['fontFamily']) => void;
 }
 
-const initialState: UIState = {
-  theme: 'system',
-  fontSize: 16,
+export const useUIStore = create<UIState>(set => ({
+  theme: 'light',
   fontFamily: 'sans',
-};
-
-export const useUIStore = create<UIState & UIActions>()(
-  immer(
-    persist(
-      set => ({
-        ...initialState,
-
-        setTheme: theme => set({ theme }),
-
-        setFontSize: fontSize => set({ fontSize }),
-
-        setFontFamily: fontFamily => set({ fontFamily }),
-      }),
-      {
-        name: 'ui-storage',
-      }
-    )
-  )
-);
+  fontSize: 16,
+  setTheme: theme => set({ theme }),
+  setFontFamily: fontFamily => set({ fontFamily }),
+  setFontSize: fontSize => set({ fontSize }),
+}));

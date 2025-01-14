@@ -7,9 +7,17 @@ export default async function handler(
 ) {
   if (req.method === 'GET') {
     try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
       const { data, error } = await supabase
         .from('notes')
         .select('*')
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -31,9 +39,25 @@ export default async function handler(
     }
 
     try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
       const { data, error } = await supabase
         .from('notes')
-        .insert([{ title, content, maturity_state: 'SEED' }])
+        .insert([
+          {
+            title,
+            content,
+            maturity_state: 'SEED',
+            user_id: user.id,
+            is_pinned: false,
+            display_order: 0,
+          },
+        ])
         .select()
         .single();
 
