@@ -1,6 +1,6 @@
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 
-interface SearchBarProps {
+export interface SearchBarProps {
   value: string;
   onChange: (value: string) => void;
 }

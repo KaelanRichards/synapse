@@ -1,19 +1,16 @@
 import { useState } from 'react';
-import { Note } from '../../types/schema';
-import { SortField, SortOrder } from './types';
-import {
-  SearchBar,
-  SortControls,
-  NoteListItem,
-  NoteListSkeleton,
-} from './components';
+import { Note, SortField, SortOrder } from '../../types/schema';
+import { NoteListSkeleton } from '../NoteListSkeleton';
+import { SortControls } from './SortControls';
+import { NoteListItem } from './NoteListItem';
+import { SearchBar } from '../SearchBar';
 
 interface NoteListProps {
   notes: Note[];
   isLoading?: boolean;
 }
 
-function NoteList({ notes = [], isLoading }: NoteListProps) {
+export function NoteList({ notes = [], isLoading }: NoteListProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortField, setSortField] = useState<SortField>('updated_at');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
@@ -77,5 +74,3 @@ function NoteList({ notes = [], isLoading }: NoteListProps) {
     </div>
   );
 }
-
-export default NoteList;

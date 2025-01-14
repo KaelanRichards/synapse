@@ -48,10 +48,15 @@ export class NoteService {
 
   async createNote(input: CreateNoteInput): Promise<Note> {
     try {
+      const { data: userData } = await this.supabase.auth.getUser();
+      if (!userData.user) {
+        throw new NoteServiceError('User not authenticated', 'UNAUTHORIZED');
+      }
+
       const validatedInput = CreateNoteInputSchema.parse(input);
       const { data, error } = await this.supabase
         .from('notes')
-        .insert([validatedInput])
+        .insert([{ ...validatedInput, user_id: userData.user.id }])
         .select()
         .single();
 

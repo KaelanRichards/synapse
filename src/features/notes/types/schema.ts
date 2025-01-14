@@ -58,3 +58,6 @@ export type NoteContent = z.infer<typeof NoteContentSchema>;
 export type Note = z.infer<typeof NoteSchema>;
 export type CreateNoteInput = z.infer<typeof CreateNoteInputSchema>;
 export type UpdateNoteInput = z.infer<typeof UpdateNoteInputSchema>;
+
+export type SortField = 'updated_at' | 'title' | 'created_at';
+export type SortOrder = 'asc' | 'desc';

@@ -5,7 +5,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { Note } from '@/features/notes/types/schema';
 import { useNoteMutations } from '@/features/notes/hooks/useNoteMutations';
 import { cn } from '@/shared/utils';
-import { NoteActions } from './NoteActions';
+import { NoteActions } from '@/features/notes/components/NoteActions';
 
 interface NoteListItemProps {
   note: Note;

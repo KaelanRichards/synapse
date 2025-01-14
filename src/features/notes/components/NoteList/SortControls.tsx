@@ -1,9 +1,6 @@
 import { ChevronUpDownIcon } from '@heroicons/react/24/outline';
 import { Button } from '@/shared/components/ui';
-import {
-  SortField,
-  SortOrder,
-} from '@/features/notes/components/NoteList/types';
+import { SortField, SortOrder } from '@/features/notes/types/schema';
 
 interface SortControlsProps {
   sortField: SortField;

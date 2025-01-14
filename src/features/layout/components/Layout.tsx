@@ -15,8 +15,8 @@ import {
 import { useRouter } from 'next/router';
 import { cn } from '@/shared/utils/';
 import { SettingsModal } from '@/features/settings/components/SettingsModal';
-import NoteList from '@/features/notes/components/NoteList';
 import { useNotes } from '@/features/notes/hooks/useNotes';
+import { NoteList } from '@/features/notes/components';
 
 interface LayoutProps {
   children: React.ReactNode;
