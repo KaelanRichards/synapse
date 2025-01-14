@@ -2,7 +2,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { formatDistanceToNow } from 'date-fns';
-import { Note } from '@/features/notes/types/note';
+import { Note } from '@/features/notes/types/schema';
 import { useNoteMutations } from '@/features/notes/hooks/useNoteMutations';
 import { cn } from '@/shared/utils';
 import { NoteActions } from './NoteActions';

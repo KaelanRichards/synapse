@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Note } from '../../types/note';
+import { Note } from '../../types/schema';
 import { SortField, SortOrder } from './types';
 import {
   SearchBar,
@@ -22,28 +22,28 @@ function NoteList({ notes = [], isLoading }: NoteListProps) {
     return <NoteListSkeleton />;
   }
 
-  const filteredNotes = (notes ?? []).filter(note => {
+  const filteredNotes = notes.filter(note => {
+    if (!searchQuery) return true;
     const searchLower = searchQuery.toLowerCase();
     return (
-      note.title?.toLowerCase().includes(searchLower) ||
-      note.content?.text?.toLowerCase().includes(searchLower)
+      note.title.toLowerCase().includes(searchLower) ||
+      note.content.text.toLowerCase().includes(searchLower)
     );
   });
 
   const sortedNotes = [...filteredNotes].sort((a, b) => {
     if (sortField === 'title') {
-      const titleA = (a.title || 'Untitled').toLowerCase();
-      const titleB = (b.title || 'Untitled').toLowerCase();
       return sortOrder === 'asc'
-        ? titleA.localeCompare(titleB)
-        : titleB.localeCompare(titleA);
+        ? a.title.localeCompare(b.title)
+        : b.title.localeCompare(a.title);
     }
+
     const dateA = new Date(a[sortField]).getTime();
     const dateB = new Date(b[sortField]).getTime();
     return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
   });
 
-  const toggleSort = (field: SortField) => {
+  const handleSort = (field: SortField) => {
     if (sortField === field) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     } else {
@@ -59,16 +59,18 @@ function NoteList({ notes = [], isLoading }: NoteListProps) {
         <SortControls
           sortField={sortField}
           sortOrder={sortOrder}
-          onSort={toggleSort}
+          onSort={handleSort}
         />
       </div>
       <div className="divide-y divide-gray-200 dark:divide-gray-800">
         {sortedNotes.map(note => (
           <NoteListItem key={note.id} note={note} />
         ))}
-        {sortedNotes.length === 0 && searchQuery && (
+        {sortedNotes.length === 0 && (
           <div className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
-            No notes found matching your search
+            {searchQuery
+              ? 'No notes found matching your search'
+              : 'No notes yet. Create your first note!'}
           </div>
         )}
       </div>

@@ -4,7 +4,7 @@ import { SerializedEditorState } from 'lexical';
 // Editor State Schema
 export const EditorStateSchema = z.object({
   type: z.string(),
-  content: z.any(),
+  content: z.custom<SerializedEditorState>(),
   selection: z
     .object({
       anchor: z.number(),
@@ -21,7 +21,7 @@ export const NoteContentSchema = z.object({
 });
 
 // Base Note Schema
-export const BaseNoteSchema = z.object({
+export const NoteSchema = z.object({
   id: z.string().uuid(),
   title: z.string().min(1, 'Title is required'),
   content: NoteContentSchema,
@@ -33,44 +33,28 @@ export const BaseNoteSchema = z.object({
 });
 
 // Create Note Input Schema
-export const CreateNoteInputSchema = z.object({
-  title: z.string().min(1, 'Title is required'),
-  content: NoteContentSchema,
-  is_pinned: z.boolean().optional().default(false),
-  display_order: z.number().optional(),
+export const CreateNoteInputSchema = NoteSchema.pick({
+  title: true,
+  content: true,
+  is_pinned: true,
+  display_order: true,
 });
 
 // Update Note Input Schema
-export const UpdateNoteInputSchema = z.object({
-  id: z.string().uuid(),
-  title: z.string().min(1, 'Title is required').optional(),
-  content: NoteContentSchema.optional(),
-  is_pinned: z.boolean().optional(),
-  display_order: z.number().optional(),
-});
+export const UpdateNoteInputSchema = NoteSchema.pick({
+  id: true,
+}).and(
+  NoteSchema.pick({
+    title: true,
+    content: true,
+    is_pinned: true,
+    display_order: true,
+  }).partial()
+);
 
 // Export inferred types
 export type EditorState = z.infer<typeof EditorStateSchema>;
 export type NoteContent = z.infer<typeof NoteContentSchema>;
-export type BaseNote = z.infer<typeof BaseNoteSchema>;
+export type Note = z.infer<typeof NoteSchema>;
 export type CreateNoteInput = z.infer<typeof CreateNoteInputSchema>;
 export type UpdateNoteInput = z.infer<typeof UpdateNoteInputSchema>;
-
-export const NoteSchema = z.object({
-  id: z.string().uuid(),
-  title: z.string().min(1),
-  content: z.object({
-    text: z.string(),
-    editorState: z.object({
-      type: z.string(),
-      content: z.any() as z.ZodType<SerializedEditorState>,
-      selection: z
-        .object({
-          anchor: z.number(),
-          focus: z.number(),
-          type: z.string(),
-        })
-        .optional(),
-    }),
-  }),
-});

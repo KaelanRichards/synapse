@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { Command } from 'cmdk';
-import { useNoteList } from '@/features/notes/hooks/useNoteList';
+import { useNotes } from '@/features/notes/hooks/useNotes';
 import { useNoteMutations } from '@/features/notes/hooks/useNoteMutations';
 import { cn } from '@/shared/utils/';
 import { createEditor } from 'lexical';
@@ -9,7 +9,7 @@ import { createEditor } from 'lexical';
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const router = useRouter();
-  const { notes } = useNoteList();
+  const { notes } = useNotes();
   const { createNote } = useNoteMutations();
 
   useEffect(() => {

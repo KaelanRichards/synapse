@@ -1,6 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
+import { NoteService } from '../services/noteService';
+import { Note } from '../types/schema';
 import { supabase } from '@/features/supabase/lib/supabase';
-import { Note } from '../types/note';
+
+const noteService = new NoteService(supabase);
 
 export function useNote(noteId: string | undefined) {
   const {
@@ -9,18 +12,9 @@ export function useNote(noteId: string | undefined) {
     error,
   } = useQuery<Note>({
     queryKey: ['note', noteId],
-    queryFn: async () => {
+    queryFn: () => {
       if (!noteId) throw new Error('Note ID is required');
-
-      const { data: note, error: noteError } = await supabase
-        .from('notes')
-        .select('*')
-        .eq('id', noteId)
-        .single();
-
-      if (noteError) throw noteError;
-
-      return note;
+      return noteService.getNote(noteId);
     },
     enabled: !!noteId,
   });

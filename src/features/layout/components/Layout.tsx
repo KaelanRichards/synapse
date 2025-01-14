@@ -16,7 +16,7 @@ import { useRouter } from 'next/router';
 import { cn } from '@/shared/utils/';
 import { SettingsModal } from '@/features/settings/components/SettingsModal';
 import NoteList from '@/features/notes/components/NoteList';
-import { useNoteList } from '@/features/notes/hooks/useNoteList';
+import { useNotes } from '@/features/notes/hooks/useNotes';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -32,7 +32,7 @@ const authPages = [
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { session, signOut } = useAuth();
   const router = useRouter();
-  const { notes, isLoading } = useNoteList();
+  const { notes, isLoading } = useNotes();
   const isAuthPage = authPages.includes(router.pathname);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = useState(false);

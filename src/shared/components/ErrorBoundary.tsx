@@ -36,8 +36,14 @@ export class ErrorBoundary extends React.Component<Props, State> {
       switch (error.code) {
         case 'UNAUTHORIZED':
           return 'Please sign in to continue';
-        case 'OPERATION_FAILED':
-          return 'Operation failed. Please try again';
+        case 'NOT_FOUND':
+          return 'Note not found';
+        case 'VALIDATION_ERROR':
+          return 'Invalid input. Please check your data.';
+        case 'DATABASE_ERROR':
+          return 'Database operation failed. Please try again.';
+        case 'UNKNOWN_ERROR':
+          return 'An unexpected error occurred';
         default:
           return 'An unexpected error occurred';
       }

@@ -6,7 +6,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { Button } from '@/shared/components/ui';
 import { cn } from '@/shared/utils';
-import { Note } from '@/features/notes/types/note';
+import { Note } from '@/features/notes/types/schema';
 
 interface DeleteConfirmationProps {
   onConfirm: () => void;
